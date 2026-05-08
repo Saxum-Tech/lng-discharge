@@ -42,17 +42,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchSettings() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('app_settings')
-      .select('*')
-      .eq('id', SETTINGS_ID)
-      .maybeSingle()
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('id', SETTINGS_ID)
+        .maybeSingle()
 
-    if (!error && data) {
-      setSettings(data)
-      applyTheme(data)
+      if (!error && data) {
+        setSettings(data)
+        applyTheme(data)
+      }
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => {
