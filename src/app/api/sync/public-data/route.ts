@@ -3,8 +3,7 @@ import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { runPublicDataSync } from '@/lib/public-data-sync'
-
-const SETTINGS_ID = '00000000-0000-0000-0000-000000000001'
+import { SETTINGS_ID } from '@/lib/constants'
 
 async function isSuperadminRequest() {
   const cookieStore = await cookies()

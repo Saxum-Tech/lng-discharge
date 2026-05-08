@@ -1,4 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  DEFAULT_DESTINATION_AIRPORT,
+  SETTINGS_ID,
+  UNKNOWN_AIRPORT_CODE,
+} from '@/lib/constants'
 
 type SyncOwner = { companyId: string; userId: string }
 
@@ -144,11 +149,12 @@ function parseFlightsFromHtml(html: string): ParsedFlight[] {
     if (!timeValue) continue
 
     const cleaned = maybeFlight.toUpperCase().replace(/\s+/g, '')
-    const origin = row.find((c) => /^[A-Z]{3}$/.test(c.trim().toUpperCase())) ?? 'XXX'
+    const origin =
+      row.find((c) => /^[A-Z]{3}$/.test(c.trim().toUpperCase())) ?? UNKNOWN_AIRPORT_CODE
     const destinationGuess =
       row.find((c) => /gib|gibraltar/i.test(c)) ??
       row.filter((c) => /^[A-Z]{3}$/.test(c.trim().toUpperCase()))[1] ??
-      'GIB'
+      DEFAULT_DESTINATION_AIRPORT
     const passengerCount = row.map(toPassengerCount).find((n) => n !== null) ?? null
 
     results.push({
@@ -187,8 +193,9 @@ function parseFlightsFromApi(json: unknown): ParsedFlight[] {
 
     flights.push({
       flight_number: flightNumber.toUpperCase().replace(/\s+/g, ''),
-      origin: record.departure?.iata || record.departure?.airport || 'XXX',
-      destination: record.arrival?.iata || record.arrival?.airport || 'GIB',
+      origin: record.departure?.iata || record.departure?.airport || UNKNOWN_AIRPORT_CODE,
+      destination:
+        record.arrival?.iata || record.arrival?.airport || DEFAULT_DESTINATION_AIRPORT,
       scheduled_arrival: arrival,
       scheduled_departure: normalizeDate(record.departure?.scheduled ?? ''),
       aircraft_type: record.aircraft?.iata ?? null,
@@ -400,11 +407,11 @@ export async function runPublicDataSync(
   const { data: settings } = await admin
     .from('app_settings')
     .select('aviation_api_key')
-    .eq('id', '00000000-0000-0000-0000-000000000001')
+    .eq('id', SETTINGS_ID)
     .single()
 
   if (options?.includeApiFlights !== false && settings?.aviation_api_key) {
-    const defaultUrl = `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(settings.aviation_api_key)}&arr_iata=GIB`
+    const defaultUrl = `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(settings.aviation_api_key)}&arr_iata=${DEFAULT_DESTINATION_AIRPORT}`
     const apiUrl = process.env.FREE_FLIGHT_API_URL || defaultUrl
     try {
       const apiData = await fetchJson(apiUrl)
