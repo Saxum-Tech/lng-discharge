@@ -62,6 +62,13 @@ function redactUrl(value: string): string {
   }
 }
 
+function redactSensitiveText(value: string): string {
+  return value
+    .replace(/(access_key=)[^&\s]+/gi, '$1***')
+    .replace(/(api_key=)[^&\s]+/gi, '$1***')
+    .replace(/([?&]key=)[^&\s]+/gi, '$1***')
+}
+
 function normalizeDate(value: string): string | null {
   const trimmed = value.trim()
   if (!trimmed) return null
@@ -116,8 +123,18 @@ function parseCruisesFromHtml(html: string): ParsedCruise[] {
     const arrival = normalizeDate(row[1])
     if (!vessel || !arrival) continue
     const departure = row[2] ? normalizeDate(row[2]) : null
+    const vesselLower = vessel.trim().toLowerCase()
     const vesselType =
-      row.find((c) => /(cruise|ferry|liner|vessel|ship)/i.test(c) && c !== vessel) ?? null
+      row.find((c) => {
+        const candidate = c.trim()
+        if (!candidate) return false
+        const candidateLower = candidate.toLowerCase()
+        if (candidateLower === vesselLower) return false
+        if (vesselLower.includes(candidateLower) || candidateLower.includes(vesselLower)) {
+          return false
+        }
+        return /(cruise|ferry|liner|vessel|ship)/i.test(candidate)
+      }) ?? null
     const passengerCount = row.map(toPassengerCount).find((n) => n !== null) ?? null
 
     results.push({
@@ -417,7 +434,8 @@ export async function runPublicDataSync(
       const apiData = await fetchJson(apiUrl)
       flights = [...flights, ...parseFlightsFromApi(apiData)]
     } catch (error) {
-      warnings.push(error instanceof Error ? error.message : 'Flight API sync failed.')
+      const message = error instanceof Error ? error.message : 'Flight API sync failed.'
+      warnings.push(redactSensitiveText(message))
     }
   }
 
