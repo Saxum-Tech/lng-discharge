@@ -39,6 +39,24 @@ function stripTags(value: string): string {
     .trim()
 }
 
+function redactUrl(value: string): string {
+  try {
+    const url = new URL(value)
+    if (url.searchParams.has('access_key')) {
+      url.searchParams.set('access_key', '***')
+    }
+    if (url.searchParams.has('api_key')) {
+      url.searchParams.set('api_key', '***')
+    }
+    if (url.searchParams.has('key')) {
+      url.searchParams.set('key', '***')
+    }
+    return url.toString()
+  } catch {
+    return value
+  }
+}
+
 function normalizeDate(value: string): string | null {
   const trimmed = value.trim()
   if (!trimmed) return null
@@ -126,7 +144,7 @@ function parseFlightsFromHtml(html: string): ParsedFlight[] {
     if (!timeValue) continue
 
     const cleaned = maybeFlight.toUpperCase().replace(/\s+/g, '')
-    const origin = row.find((c) => /^[A-Z]{3}$/.test(c.trim().toUpperCase())) ?? 'UNKNOWN'
+    const origin = row.find((c) => /^[A-Z]{3}$/.test(c.trim().toUpperCase())) ?? 'XXX'
     const destinationGuess =
       row.find((c) => /gib|gibraltar/i.test(c)) ??
       row.filter((c) => /^[A-Z]{3}$/.test(c.trim().toUpperCase()))[1] ??
@@ -169,7 +187,7 @@ function parseFlightsFromApi(json: unknown): ParsedFlight[] {
 
     flights.push({
       flight_number: flightNumber.toUpperCase().replace(/\s+/g, ''),
-      origin: record.departure?.iata || record.departure?.airport || 'UNKNOWN',
+      origin: record.departure?.iata || record.departure?.airport || 'XXX',
       destination: record.arrival?.iata || record.arrival?.airport || 'GIB',
       scheduled_arrival: arrival,
       scheduled_departure: normalizeDate(record.departure?.scheduled ?? ''),
@@ -189,7 +207,7 @@ async function fetchText(url: string): Promise<string> {
     cache: 'no-store',
   })
   if (!response.ok) {
-    throw new Error(`Fetch failed (${response.status}) for ${url}`)
+    throw new Error(`Fetch failed (${response.status}) for ${redactUrl(url)}`)
   }
   return response.text()
 }
@@ -202,7 +220,7 @@ async function fetchJson(url: string): Promise<unknown> {
     cache: 'no-store',
   })
   if (!response.ok) {
-    throw new Error(`Fetch failed (${response.status}) for ${url}`)
+    throw new Error(`Fetch failed (${response.status}) for ${redactUrl(url)}`)
   }
   return response.json()
 }
