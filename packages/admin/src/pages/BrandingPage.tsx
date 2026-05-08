@@ -134,13 +134,16 @@ export function BrandingPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-gray-700">Logo</label>
                   <div className="flex items-center gap-4">
-                    {logoUrl && sanitizeImageUrl(logoUrl) ? (
-                      <img src={sanitizeImageUrl(logoUrl)} alt="Logo preview" className="h-12 w-auto rounded border border-gray-200 object-contain p-1" />
-                    ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded border border-dashed border-gray-300 text-gray-400 text-xs">
-                        No logo
-                      </div>
-                    )}
+                    {(() => {
+                      const safeLogoUrl = sanitizeImageUrl(logoUrl);
+                      return safeLogoUrl ? (
+                        <img src={safeLogoUrl} alt="Logo preview" className="h-12 w-auto rounded border border-gray-200 object-contain p-1" />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded border border-dashed border-gray-300 text-gray-400 text-xs">
+                          No logo
+                        </div>
+                      );
+                    })()}
                     <Button type="button" variant="secondary" size="sm" onClick={() => logoInputRef.current?.click()}>
                       <Upload size={14} /> Upload
                     </Button>
@@ -159,13 +162,16 @@ export function BrandingPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-gray-700">Favicon</label>
                   <div className="flex items-center gap-4">
-                    {faviconUrl ? (
-                      <img src={faviconUrl} alt="Favicon preview" className="h-8 w-8 rounded border border-gray-200 object-contain" />
-                    ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded border border-dashed border-gray-300 text-gray-400 text-xs">
-                        –
-                      </div>
-                    )}
+                    {(() => {
+                      const safeFaviconUrl = sanitizeImageUrl(faviconUrl);
+                      return safeFaviconUrl ? (
+                        <img src={safeFaviconUrl} alt="Favicon preview" className="h-8 w-8 rounded border border-gray-200 object-contain" />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded border border-dashed border-gray-300 text-gray-400 text-xs">
+                          –
+                        </div>
+                      );
+                    })()}
                     <Button type="button" variant="secondary" size="sm" onClick={() => faviconInputRef.current?.click()}>
                       <Upload size={14} /> Upload
                     </Button>
@@ -239,13 +245,16 @@ export function BrandingPage() {
               >
                 {/* Simulated navbar */}
                 <div className="flex items-center gap-2 px-4 py-3" style={{ backgroundColor: primaryColor }}>
-                  {logoUrl && sanitizeImageUrl(logoUrl) ? (
-                    <img src={sanitizeImageUrl(logoUrl)} alt="" className="h-6 w-auto" />
-                  ) : (
-                    <div className="flex h-6 w-6 items-center justify-center rounded bg-white/20 text-white text-xs font-bold">
-                      LNG
-                    </div>
-                  )}
+                  {(() => {
+                    const safeLogoUrl = sanitizeImageUrl(logoUrl);
+                    return safeLogoUrl ? (
+                      <img src={safeLogoUrl} alt="" className="h-6 w-auto" />
+                    ) : (
+                      <div className="flex h-6 w-6 items-center justify-center rounded bg-white/20 text-white text-xs font-bold">
+                        LNG
+                      </div>
+                    );
+                  })()}
                   <span className="text-sm font-semibold text-white">{appName || 'App Name'}</span>
                 </div>
 
