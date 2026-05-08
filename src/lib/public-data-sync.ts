@@ -25,6 +25,11 @@ type ParsedCruise = {
   passenger_count: number | null
 }
 
+type HtmlTableBlock = {
+  rows: string[][]
+  context: string
+}
+
 export type PublicDataSyncSummary = {
   flights_inserted: number
   flights_updated: number
@@ -33,6 +38,21 @@ export type PublicDataSyncSummary = {
   cruises_updated: number
   cruises_skipped: number
   warnings: string[]
+}
+
+const MONTH_INDEX: Record<string, string> = {
+  jan: '01',
+  feb: '02',
+  mar: '03',
+  apr: '04',
+  may: '05',
+  jun: '06',
+  jul: '07',
+  aug: '08',
+  sep: '09',
+  oct: '10',
+  nov: '11',
+  dec: '12',
 }
 
 function stripTags(value: string): string {
@@ -69,9 +89,22 @@ function redactSensitiveText(value: string): string {
     .replace(/([?&]key=)[^&\s]+/gi, '$1***')
 }
 
-function normalizeDate(value: string): string | null {
+function normalizeYear(yearRaw: string): string {
+  if (yearRaw.length !== 2) return yearRaw
+
+  const yy = Number.parseInt(yearRaw, 10)
+  const currentYear = new Date().getUTCFullYear()
+  const currentCentury = Math.floor(currentYear / 100) * 100
+  let fullYear = currentCentury + yy
+  if (fullYear - currentYear > 20) fullYear -= 100
+  if (currentYear - fullYear > 80) fullYear += 100
+  return String(fullYear)
+}
+
+function normalizeDate(value: string, contextDate?: string): string | null {
   const trimmed = value.trim()
   if (!trimmed) return null
+  if (/^\d{1,6}$/.test(trimmed)) return null
 
   const direct = new Date(trimmed)
   if (!Number.isNaN(direct.getTime())) return direct.toISOString()
@@ -82,22 +115,33 @@ function normalizeDate(value: string): string | null {
   if (dayFirst) {
     const day = dayFirst[1].padStart(2, '0')
     const month = dayFirst[2].padStart(2, '0')
-    const yearRaw = dayFirst[3]
-    const year =
-      yearRaw.length === 2
-        ? (() => {
-            const yy = Number.parseInt(yearRaw, 10)
-            const currentYear = new Date().getUTCFullYear()
-            const currentCentury = Math.floor(currentYear / 100) * 100
-            let fullYear = currentCentury + yy
-            if (fullYear - currentYear > 20) fullYear -= 100
-            if (currentYear - fullYear > 80) fullYear += 100
-            return String(fullYear)
-          })()
-        : yearRaw
+    const year = normalizeYear(dayFirst[3])
     const hour = (dayFirst[4] ?? '00').padStart(2, '0')
     const minute = dayFirst[5] ?? '00'
     const parsed = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`)
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+  }
+
+  const monthName = trimmed.match(
+    /^(?:[A-Za-z]{3,9}\s+)?(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{2,4})(?:,?\s+(\d{1,2}):(\d{2}))?$/,
+  )
+  if (monthName) {
+    const month = MONTH_INDEX[monthName[2].slice(0, 3).toLowerCase()]
+    if (month) {
+      const day = monthName[1].padStart(2, '0')
+      const year = normalizeYear(monthName[3])
+      const hour = (monthName[4] ?? '00').padStart(2, '0')
+      const minute = monthName[5] ?? '00'
+      const parsed = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`)
+      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+    }
+  }
+
+  const timeOnly = trimmed.match(/^(\d{1,2}):(\d{2})$/)
+  if (timeOnly && contextDate) {
+    const hour = timeOnly[1].padStart(2, '0')
+    const minute = timeOnly[2]
+    const parsed = new Date(`${contextDate}T${hour}:${minute}:00Z`)
     if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
   }
 
@@ -116,9 +160,70 @@ function extractRows(html: string): string[][] {
     .filter((cells) => cells.length > 0)
 }
 
-function toPassengerCount(value: string): number | null {
-  const match = value.replace(/,/g, '').match(/\b(\d{1,6})\b/)
-  return match ? Number.parseInt(match[1], 10) : null
+function extractTableBlocks(html: string): HtmlTableBlock[] {
+  return [...html.matchAll(/<table[\s\S]*?<\/table>/gi)]
+    .map((table) => {
+      const tableHtml = table[0]
+      const start = table.index ?? 0
+      return {
+        rows: extractRows(tableHtml),
+        context: stripTags(html.slice(Math.max(0, start - 1500), start)),
+      }
+    })
+    .filter((table) => table.rows.length > 0)
+}
+
+function normalizeHeader(value: string): string {
+  return value.toLowerCase().replace(/[^a-z]/g, '')
+}
+
+function looksLikeDateText(value: string): boolean {
+  const trimmed = value.trim()
+  return /[A-Za-z]{3,}/.test(trimmed) || /[\/.-]/.test(trimmed) || /^\d{1,2}:\d{2}$/.test(trimmed)
+}
+
+function extractContextDate(value: string): string | null {
+  const cleaned = stripTags(value).replace(/\s+/g, ' ').trim()
+  const candidates = [
+    ...cleaned.matchAll(
+      /\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)(?:day)?\s+\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}\b/gi,
+    ),
+    ...cleaned.matchAll(/\b\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}\b/gi),
+    ...cleaned.matchAll(/\b\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\b/g),
+  ]
+
+  for (let i = candidates.length - 1; i >= 0; i -= 1) {
+    const normalized = normalizeDate(candidates[i][0])
+    if (normalized) return normalized.slice(0, 10)
+  }
+
+  return null
+}
+
+function parsePassengerCountCell(value: string): number | null {
+  const cleaned = value.trim().replace(/,/g, '')
+  return /^\d{1,6}$/.test(cleaned) ? Number.parseInt(cleaned, 10) : null
+}
+
+function findTrailingPassengerCount(row: string[]): number | null {
+  for (let i = row.length - 1; i >= 0; i -= 1) {
+    const count = parsePassengerCountCell(row[i])
+    if (count !== null) return count
+  }
+
+  return null
+}
+
+function findDateInRow(row: string[], contextDate?: string, exclude?: string): string | null {
+  for (const cell of row) {
+    if (exclude && cell === exclude) continue
+    if (!looksLikeDateText(cell)) continue
+
+    const normalized = normalizeDate(cell, contextDate)
+    if (normalized) return normalized
+  }
+
+  return null
 }
 
 function extractVesselType(row: string[], vesselName: string): string | null {
@@ -137,18 +242,25 @@ function extractVesselType(row: string[], vesselName: string): string | null {
   )
 }
 
-function parseCruisesFromHtml(html: string): ParsedCruise[] {
-  const rows = extractRows(html)
+function parseLegacyCruisesFromRows(rows: string[][]): ParsedCruise[] {
   const results: ParsedCruise[] = []
 
   for (const row of rows) {
     if (row.length < 2) continue
-    const vessel = row[0]
-    const arrival = normalizeDate(row[1])
+
+    const headers = row.map(normalizeHeader)
+    if (headers.includes('arrival') || headers.includes('shipname') || headers.includes('vesselname')) {
+      continue
+    }
+
+    const firstIsDate = normalizeDate(row[0])
+    const secondIsDate = normalizeDate(row[1])
+    const vessel = firstIsDate && !secondIsDate ? row[1] : row[0]
+    const arrival = firstIsDate ?? secondIsDate
     if (!vessel || !arrival) continue
     const departure = row[2] ? normalizeDate(row[2]) : null
     const vesselType = extractVesselType(row, vessel)
-    const passengerCount = row.map(toPassengerCount).find((n) => n !== null) ?? null
+    const passengerCount = findTrailingPassengerCount(row)
 
     results.push({
       vessel_name: vessel,
@@ -162,12 +274,73 @@ function parseCruisesFromHtml(html: string): ParsedCruise[] {
   return results
 }
 
+function parseCruisesFromHtml(html: string): ParsedCruise[] {
+  const tables = extractTableBlocks(html)
+  const combinedResults: ParsedCruise[] = []
+
+  for (const table of tables) {
+    let vesselIndex = 0
+    let arrivalIndex = 1
+    let departureIndex = 2
+    let passengerIndex: number | null = null
+    const results: ParsedCruise[] = []
+
+    for (const row of table.rows) {
+      const headers = row.map(normalizeHeader)
+      if (headers.includes('arrival') || headers.includes('shipname') || headers.includes('vesselname')) {
+        arrivalIndex = headers.findIndex((header) => header === 'arrival' || header === 'eta')
+        vesselIndex = headers.findIndex(
+          (header) => header === 'shipname' || header === 'vesselname' || header === 'ship',
+        )
+        departureIndex = headers.findIndex(
+          (header) => header === 'etd' || header === 'departure' || header === 'departuredate',
+        )
+        passengerIndex = headers.findIndex(
+          (header) => header === 'pax' || header === 'passengers' || header === 'passengercount',
+        )
+        continue
+      }
+
+      const vessel = row[vesselIndex] ?? row[0]
+      const arrivalCell = arrivalIndex >= 0 ? row[arrivalIndex] : undefined
+      const arrival = arrivalCell ? normalizeDate(arrivalCell) : findDateInRow(row)
+      if (!vessel || !arrival) continue
+
+      const departureCell = departureIndex >= 0 ? row[departureIndex] : undefined
+      const departure = departureCell
+        ? normalizeDate(departureCell)
+        : findDateInRow(row, undefined, arrivalCell)
+      const passengerCount =
+        passengerIndex !== null && passengerIndex >= 0
+          ? parsePassengerCountCell(row[passengerIndex] ?? '')
+          : findTrailingPassengerCount(row)
+
+      results.push({
+        vessel_name: vessel,
+        vessel_type: extractVesselType(row, vessel),
+        arrival_date: arrival,
+        departure_date: departure,
+        passenger_count: passengerCount,
+      })
+    }
+
+    if (results.length > 0) {
+      combinedResults.push(...results)
+    }
+  }
+
+  return combinedResults.length > 0 ? combinedResults : parseLegacyCruisesFromRows(extractRows(html))
+}
+
 function looksLikeFlightNumber(value: string): boolean {
   return /^[A-Z0-9]{2,3}\s?\d{1,4}[A-Z]?$/.test(value.trim().toUpperCase())
 }
 
-function parseFlightsFromHtml(html: string): ParsedFlight[] {
-  const rows = extractRows(html)
+function looksLikeTimeOnly(value: string): boolean {
+  return /^\d{1,2}:\d{2}$/.test(value.trim())
+}
+
+function parseLegacyFlightsFromRows(rows: string[][]): ParsedFlight[] {
   const results: ParsedFlight[] = []
 
   for (const row of rows) {
@@ -175,7 +348,7 @@ function parseFlightsFromHtml(html: string): ParsedFlight[] {
     const maybeFlight = row.find(looksLikeFlightNumber)
     if (!maybeFlight) continue
 
-    const timeValue = row.map(normalizeDate).find((d) => d !== null)
+    const timeValue = row.map((cell) => normalizeDate(cell)).find((d) => d !== null)
     if (!timeValue) continue
 
     const cleaned = maybeFlight.toUpperCase().replace(/\s+/g, '')
@@ -186,7 +359,6 @@ function parseFlightsFromHtml(html: string): ParsedFlight[] {
       row.find((c) => /gib|gibraltar/i.test(c)) ??
       iataCodes[1] ??
       DEFAULT_DESTINATION_AIRPORT
-    const passengerCount = row.map(toPassengerCount).find((n) => n !== null) ?? null
 
     results.push({
       flight_number: cleaned,
@@ -195,11 +367,110 @@ function parseFlightsFromHtml(html: string): ParsedFlight[] {
       scheduled_arrival: timeValue,
       scheduled_departure: null,
       aircraft_type: null,
-      passenger_count: passengerCount,
+      passenger_count: null,
     })
   }
 
   return results
+}
+
+function parseFlightsFromHtml(html: string): ParsedFlight[] {
+  const tables = extractTableBlocks(html)
+  const combinedResults: ParsedFlight[] = []
+
+  for (const table of tables) {
+    const results: ParsedFlight[] = []
+    let contextDate = extractContextDate(table.context)
+    let direction: 'arrival' | 'departure' | null =
+      /departure/i.test(table.context) && !/arrival/i.test(table.context)
+        ? 'departure'
+        : /arrival/i.test(table.context) && !/departure/i.test(table.context)
+          ? 'arrival'
+          : null
+    let locationIndex = 0
+    let flightIndex = 1
+    let scheduleIndex = 2
+
+    for (const row of table.rows) {
+      const headers = row.map(normalizeHeader)
+      if (headers.includes('flight') && headers.some((header) => header.includes('sched'))) {
+        const detectedLocationIndex = headers.findIndex(
+          (header) =>
+            header === 'from' ||
+            header === 'to' ||
+            header === 'origin' ||
+            header === 'destination',
+        )
+        const detectedFlightIndex = headers.findIndex((header) => header.includes('flight'))
+        const detectedScheduleIndex = headers.findIndex(
+          (header) => header.includes('sched') || header.includes('time'),
+        )
+
+        if (detectedLocationIndex >= 0) locationIndex = detectedLocationIndex
+        if (detectedFlightIndex >= 0) flightIndex = detectedFlightIndex
+        if (detectedScheduleIndex >= 0) scheduleIndex = detectedScheduleIndex
+        if (headers.includes('to') || headers.includes('departure')) direction = 'departure'
+        if (headers.includes('from') || headers.includes('arrival')) direction = 'arrival'
+        continue
+      }
+
+      if (row.length === 1) {
+        const maybeDate = extractContextDate(row[0])
+        if (maybeDate) {
+          contextDate = maybeDate
+          continue
+        }
+        if (/departures?/i.test(row[0])) {
+          direction = 'departure'
+          continue
+        }
+        if (/arrivals?/i.test(row[0])) {
+          direction = 'arrival'
+          continue
+        }
+      }
+
+      const flightCell = row[flightIndex] ?? row.find(looksLikeFlightNumber)
+      if (!flightCell || !looksLikeFlightNumber(flightCell)) continue
+
+      const timeCell =
+        row[scheduleIndex] ??
+        row.find((cell) => looksLikeTimeOnly(cell) || normalizeDate(cell, contextDate ?? undefined) !== null)
+      const scheduled = timeCell ? normalizeDate(timeCell, contextDate ?? undefined) : null
+      if (!scheduled) continue
+
+      const locationCell =
+        row[locationIndex] ??
+        row.find(
+          (cell) =>
+            cell !== flightCell &&
+            cell !== timeCell &&
+            !looksLikeFlightNumber(cell) &&
+            !looksLikeTimeOnly(cell) &&
+            !/scheduled|estimated|landed|enroute|gate|status|on\s*time|delayed|cancelled/i.test(
+              cell,
+            ),
+        )
+      const location = locationCell?.trim() || UNKNOWN_AIRPORT_CODE
+      const cleanedFlight = flightCell.toUpperCase().replace(/\s+/g, '')
+
+      results.push({
+        flight_number: cleanedFlight,
+        origin: direction === 'departure' ? DEFAULT_DESTINATION_AIRPORT : location,
+        destination: direction === 'departure' ? location : DEFAULT_DESTINATION_AIRPORT,
+        scheduled_arrival: scheduled,
+        scheduled_departure: direction === 'departure' ? scheduled : null,
+        aircraft_type: null,
+        passenger_count: null,
+      })
+    }
+
+    if (results.length > 0) {
+      combinedResults.push(...results)
+    }
+  }
+
+  return combinedResults.length > 0 ? combinedResults : parseLegacyFlightsFromRows(extractRows(html))
 }
 
 function parseFlightsFromApi(json: unknown): ParsedFlight[] {
@@ -427,9 +698,10 @@ export async function runPublicDataSync(
   const warnings: string[] = []
   const cruiseUrl =
     process.env.GIBRALTAR_CRUISE_SCHEDULE_URL ||
-    'https://www.gibraltarport.com/shipping/cruise-schedule'
+    'https://www.gibraltarport.com/cruise/schedules'
   const airportUrl =
-    process.env.GIBRALTAR_AIRPORT_FLIGHTS_URL || 'https://www.gibraltarairport.gi/flight-information'
+    process.env.GIBRALTAR_AIRPORT_FLIGHTS_URL ||
+    'https://www.gibraltarairport.gi/airlines-and-destinations/live-flight-information'
 
   const [cruiseHtml, airportHtml] = await Promise.all([fetchText(cruiseUrl), fetchText(airportUrl)])
   let flights = parseFlightsFromHtml(airportHtml)
