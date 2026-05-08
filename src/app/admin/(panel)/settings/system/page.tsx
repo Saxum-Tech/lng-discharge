@@ -17,11 +17,28 @@ const TIMEZONES = [
   'UTC',
 ]
 
+function formatSyncSummary(summary: {
+  flights_inserted: number
+  flights_updated: number
+  flights_skipped: number
+  cruises_inserted: number
+  cruises_updated: number
+  cruises_skipped: number
+  warnings: string[]
+}) {
+  const warningText =
+    summary.warnings.length > 0 ? ` Warnings: ${summary.warnings.join(' | ')}` : ''
+  return `Sync complete. Flights +${summary.flights_inserted} (updated ${summary.flights_updated}, skipped ${summary.flights_skipped}), Cruises +${summary.cruises_inserted} (updated ${summary.cruises_updated}, skipped ${summary.cruises_skipped}).${warningText}`
+}
+
 export default function SystemSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [syncMessage, setSyncMessage] = useState('')
+  const [syncError, setSyncError] = useState('')
 
   const [minHours, setMinHours] = useState(4)
   const [timezone, setTimezone] = useState('Europe/Gibraltar')
@@ -65,6 +82,49 @@ export default function SystemSettingsPage() {
     setSaving(false)
     if (error) setError(error.message)
     else setMessage('Settings saved.')
+  }
+
+  async function handleSyncNow() {
+    setSyncing(true)
+    setSyncMessage('')
+    setSyncError('')
+    try {
+      const response = await fetch('/api/sync/public-data', { method: 'POST' })
+      const payload = (await response.json()) as {
+        error?: string
+        skipped?: boolean
+        reason?: string
+        summary?: {
+          flights_inserted: number
+          flights_updated: number
+          flights_skipped: number
+          cruises_inserted: number
+          cruises_updated: number
+          cruises_skipped: number
+          warnings: string[]
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Sync failed.')
+      }
+
+      if (payload.skipped) {
+        setSyncMessage(payload.reason || 'Sync skipped.')
+        return
+      }
+
+      if (!payload.summary) {
+        setSyncMessage('Sync completed.')
+        return
+      }
+
+      setSyncMessage(formatSyncSummary(payload.summary))
+    } catch (err: unknown) {
+      setSyncError(err instanceof Error ? err.message : 'Sync failed.')
+    } finally {
+      setSyncing(false)
+    }
   }
 
   return (
@@ -137,6 +197,16 @@ export default function SystemSettingsPage() {
                   Enable public data auto-sync
                 </label>
               </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" variant="secondary" onClick={handleSyncNow} loading={syncing}>
+                  Sync public data now
+                </Button>
+                <p className="text-xs text-gray-500">
+                  Pulls Gibraltar cruise schedules and flight data into the database.
+                </p>
+              </div>
+              {syncMessage && <p className="text-sm text-green-600">{syncMessage}</p>}
+              {syncError && <p className="text-sm text-red-600">{syncError}</p>}
             </div>
           </Card>
 

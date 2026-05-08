@@ -30,6 +30,25 @@ pnpm dev:admin     # http://localhost:5174
 3. Enable Storage and create a public bucket named `branding`
 4. Enable Row Level Security on all tables
 
+## Public data sync (cruise + flights)
+
+The app can ingest public schedule data into `cruise_schedules` and `flights` via:
+
+- `POST /api/sync/public-data` (manual trigger from Admin → System Settings)
+- A cron trigger using `Authorization: Bearer ${SYNC_CRON_TOKEN}`
+- Vercel cron is configured in `vercel.json` to run hourly (`0 * * * *`)
+
+Configure these environment variables:
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SYNC_CRON_TOKEN`
+  - `CRON_SECRET` is also accepted (useful for Vercel cron auth header)
+- `GIBRALTAR_CRUISE_SCHEDULE_URL` (optional override)
+- `GIBRALTAR_AIRPORT_FLIGHTS_URL` (optional override)
+- `FREE_FLIGHT_API_URL` (optional override)
+
+`aviation_api_key` is managed from System Settings and is used for free flight API ingestion when provided.
+
 ## Role hierarchy
 
 | Role | Access |
