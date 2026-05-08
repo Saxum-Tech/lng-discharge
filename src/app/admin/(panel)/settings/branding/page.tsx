@@ -26,7 +26,6 @@ function sanitizeImageUrl(url: string): string | undefined {
 }
 
 export default function BrandingPage() {
-  const [, setSettings] = useState<AppSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -50,7 +49,6 @@ export default function BrandingPage() {
       .eq('id', SETTINGS_ID)
       .single()
     if (data) {
-      setSettings(data)
       setAppName(data.app_name ?? '')
       setPrimaryColor(data.primary_color ?? '#0f4c81')
       setAccentColor(data.accent_color ?? '#00a8e8')

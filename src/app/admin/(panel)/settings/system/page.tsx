@@ -18,7 +18,6 @@ const TIMEZONES = [
 ]
 
 export default function SystemSettingsPage() {
-  const [, setSettings] = useState<AppSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -36,7 +35,6 @@ export default function SystemSettingsPage() {
       .eq('id', SETTINGS_ID)
       .single()
     if (data) {
-      setSettings(data)
       setMinHours(data.min_discharge_window_hours ?? 4)
       setTimezone(data.timezone ?? 'Europe/Gibraltar')
       setAviationApiKey(data.aviation_api_key ?? '')

@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/Button'
 export default function ProfilePage() {
   const { profile, user } = useAuth()
   const [fullName, setFullName] = useState(profile?.full_name ?? '')
-  const [, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -40,7 +39,6 @@ export default function ProfilePage() {
     if (error) setError(error.message)
     else {
       setMessage('Password updated.')
-      setCurrentPassword('')
       setNewPassword('')
     }
   }
