@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       .from('app_settings')
       .select('auto_sync_enabled')
       .eq('id', SETTINGS_ID)
-      .single()
+      .maybeSingle()
 
     if (settingsError) throw settingsError
 

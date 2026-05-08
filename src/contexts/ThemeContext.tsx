@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { SETTINGS_ID } from '@/lib/constants'
 import type { AppSettings } from '@/lib/types'
 
 interface ThemeContextValue {
@@ -40,8 +41,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   async function fetchSettings() {
-    const { data } = await supabase.from('app_settings').select('*').single()
-    if (data) {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('*')
+      .eq('id', SETTINGS_ID)
+      .maybeSingle()
+
+    if (!error && data) {
       setSettings(data)
       applyTheme(data)
     }
