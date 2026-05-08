@@ -50,7 +50,7 @@ export default function SystemSettingsPage() {
       .from('app_settings')
       .select('*')
       .eq('id', SETTINGS_ID)
-      .single()
+      .maybeSingle()
     if (data) {
       setMinHours(data.min_discharge_window_hours ?? 4)
       setTimezone(data.timezone ?? 'Europe/Gibraltar')

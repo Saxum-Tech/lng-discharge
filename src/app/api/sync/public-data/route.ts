@@ -57,11 +57,20 @@ export async function POST(request: Request) {
       .from('app_settings')
       .select('auto_sync_enabled')
       .eq('id', SETTINGS_ID)
-      .single()
+      .maybeSingle()
 
     if (settingsError) throw settingsError
 
-    if (cronAuthorized && !settings?.auto_sync_enabled) {
+    if (cronAuthorized && !settings) {
+      return NextResponse.json(
+        { skipped: true, reason: 'Auto sync skipped: system settings row is missing.' },
+        { status: 200 },
+      )
+    }
+
+    const autoSyncEnabled = settings?.auto_sync_enabled ?? false
+
+    if (cronAuthorized && !autoSyncEnabled) {
       return NextResponse.json(
         { skipped: true, reason: 'Auto sync disabled in system settings.' },
         { status: 200 },

@@ -711,7 +711,7 @@ export async function runPublicDataSync(
     .from('app_settings')
     .select('aviation_api_key')
     .eq('id', SETTINGS_ID)
-    .single()
+    .maybeSingle()
 
   if (options?.includeApiFlights !== false && settings?.aviation_api_key) {
     const defaultUrl = `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(settings.aviation_api_key)}&arr_iata=${DEFAULT_DESTINATION_AIRPORT}`

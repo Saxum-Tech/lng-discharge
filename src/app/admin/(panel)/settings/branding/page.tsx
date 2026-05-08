@@ -47,7 +47,7 @@ export default function BrandingPage() {
       .from('app_settings')
       .select('*')
       .eq('id', SETTINGS_ID)
-      .single()
+      .maybeSingle()
     if (data) {
       setAppName(data.app_name ?? '')
       setPrimaryColor(data.primary_color ?? '#0f4c81')
