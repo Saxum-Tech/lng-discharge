@@ -52,6 +52,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (!error && data) {
         setSettings(data)
         applyTheme(data)
+      } else if (error) {
+        console.error('Failed to load app settings.', error.message)
       }
     } finally {
       setLoading(false)

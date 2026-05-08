@@ -61,7 +61,14 @@ export async function POST(request: Request) {
 
     if (settingsError) throw settingsError
 
-    const autoSyncEnabled = settings?.auto_sync_enabled ?? true
+    if (cronAuthorized && !settings) {
+      return NextResponse.json(
+        { skipped: true, reason: 'Auto sync skipped: system settings row is missing.' },
+        { status: 200 },
+      )
+    }
+
+    const autoSyncEnabled = settings?.auto_sync_enabled ?? false
 
     if (cronAuthorized && !autoSyncEnabled) {
       return NextResponse.json(
