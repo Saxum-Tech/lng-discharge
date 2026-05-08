@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
     if (settingsError) throw settingsError
 
-    if (cronAuthorized && !settings?.auto_sync_enabled) {
+    if (cronAuthorized && settings?.auto_sync_enabled === false) {
       return NextResponse.json(
         { skipped: true, reason: 'Auto sync disabled in system settings.' },
         { status: 200 },
