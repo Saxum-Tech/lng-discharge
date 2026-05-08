@@ -104,6 +104,7 @@ function normalizeYear(yearRaw: string): string {
 function normalizeDate(value: string, contextDate?: string): string | null {
   const trimmed = value.trim()
   if (!trimmed) return null
+  if (/^\d{1,6}$/.test(trimmed)) return null
 
   const direct = new Date(trimmed)
   if (!Number.isNaN(direct.getTime())) return direct.toISOString()
@@ -176,6 +177,11 @@ function normalizeHeader(value: string): string {
   return value.toLowerCase().replace(/[^a-z]/g, '')
 }
 
+function looksLikeDateText(value: string): boolean {
+  const trimmed = value.trim()
+  return /[A-Za-z]{3,}/.test(trimmed) || /[\/.-]/.test(trimmed) || /^\d{1,2}:\d{2}$/.test(trimmed)
+}
+
 function extractContextDate(value: string): string | null {
   const cleaned = stripTags(value).replace(/\s+/g, ' ').trim()
   const candidates = [
@@ -208,6 +214,18 @@ function findTrailingPassengerCount(row: string[]): number | null {
   return null
 }
 
+function findDateInRow(row: string[], contextDate?: string, exclude?: string): string | null {
+  for (const cell of row) {
+    if (exclude && cell === exclude) continue
+    if (!looksLikeDateText(cell)) continue
+
+    const normalized = normalizeDate(cell, contextDate)
+    if (normalized) return normalized
+  }
+
+  return null
+}
+
 function extractVesselType(row: string[], vesselName: string): string | null {
   const vesselLower = vesselName.trim().toLowerCase()
   return (
@@ -224,7 +242,7 @@ function extractVesselType(row: string[], vesselName: string): string | null {
   )
 }
 
-function parseCruisesFromRows(rows: string[][]): ParsedCruise[] {
+function parseLegacyCruisesFromRows(rows: string[][]): ParsedCruise[] {
   const results: ParsedCruise[] = []
 
   for (const row of rows) {
@@ -284,10 +302,14 @@ function parseCruisesFromHtml(html: string): ParsedCruise[] {
       }
 
       const vessel = row[vesselIndex] ?? row[0]
-      const arrival = normalizeDate(row[arrivalIndex] ?? row[1] ?? row[0])
+      const arrivalCell = arrivalIndex >= 0 ? row[arrivalIndex] : undefined
+      const arrival = arrivalCell ? normalizeDate(arrivalCell) : findDateInRow(row)
       if (!vessel || !arrival) continue
 
-      const departure = row[departureIndex] ? normalizeDate(row[departureIndex]) : null
+      const departureCell = departureIndex >= 0 ? row[departureIndex] : undefined
+      const departure = departureCell
+        ? normalizeDate(departureCell)
+        : findDateInRow(row, undefined, arrivalCell)
       const passengerCount =
         passengerIndex !== null && passengerIndex >= 0
           ? parsePassengerCountCell(row[passengerIndex] ?? '')
@@ -307,7 +329,7 @@ function parseCruisesFromHtml(html: string): ParsedCruise[] {
     }
   }
 
-  return combinedResults.length > 0 ? combinedResults : parseCruisesFromRows(extractRows(html))
+  return combinedResults.length > 0 ? combinedResults : parseLegacyCruisesFromRows(extractRows(html))
 }
 
 function looksLikeFlightNumber(value: string): boolean {
@@ -413,9 +435,7 @@ function parseFlightsFromHtml(html: string): ParsedFlight[] {
 
       const timeCell =
         row[scheduleIndex] ??
-        row.find(
-          (cell) => looksLikeTimeOnly(cell) || normalizeDate(cell, contextDate ?? undefined) !== null,
-        )
+        row.find((cell) => looksLikeTimeOnly(cell) || normalizeDate(cell, contextDate ?? undefined) !== null)
       const scheduled = timeCell ? normalizeDate(timeCell, contextDate ?? undefined) : null
       if (!scheduled) continue
 
