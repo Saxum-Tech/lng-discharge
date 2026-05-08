@@ -85,7 +85,15 @@ function normalizeDate(value: string): string | null {
     const yearRaw = dayFirst[3]
     const year =
       yearRaw.length === 2
-        ? `${Number.parseInt(yearRaw, 10) >= 50 ? '19' : '20'}${yearRaw}`
+        ? (() => {
+            const yy = Number.parseInt(yearRaw, 10)
+            const currentYear = new Date().getUTCFullYear()
+            const currentCentury = Math.floor(currentYear / 100) * 100
+            let fullYear = currentCentury + yy
+            if (fullYear - currentYear > 20) fullYear -= 100
+            if (currentYear - fullYear > 80) fullYear += 100
+            return String(fullYear)
+          })()
         : yearRaw
     const hour = (dayFirst[4] ?? '00').padStart(2, '0')
     const minute = dayFirst[5] ?? '00'
@@ -113,6 +121,22 @@ function toPassengerCount(value: string): number | null {
   return match ? Number.parseInt(match[1], 10) : null
 }
 
+function extractVesselType(row: string[], vesselName: string): string | null {
+  const vesselLower = vesselName.trim().toLowerCase()
+  return (
+    row.find((c) => {
+      const candidate = c.trim()
+      if (!candidate) return false
+      const candidateLower = candidate.toLowerCase()
+      if (candidateLower === vesselLower) return false
+      if (vesselLower.includes(candidateLower) || candidateLower.includes(vesselLower)) {
+        return false
+      }
+      return /(cruise|ferry|liner|vessel|ship)/i.test(candidate)
+    }) ?? null
+  )
+}
+
 function parseCruisesFromHtml(html: string): ParsedCruise[] {
   const rows = extractRows(html)
   const results: ParsedCruise[] = []
@@ -123,18 +147,7 @@ function parseCruisesFromHtml(html: string): ParsedCruise[] {
     const arrival = normalizeDate(row[1])
     if (!vessel || !arrival) continue
     const departure = row[2] ? normalizeDate(row[2]) : null
-    const vesselLower = vessel.trim().toLowerCase()
-    const vesselType =
-      row.find((c) => {
-        const candidate = c.trim()
-        if (!candidate) return false
-        const candidateLower = candidate.toLowerCase()
-        if (candidateLower === vesselLower) return false
-        if (vesselLower.includes(candidateLower) || candidateLower.includes(vesselLower)) {
-          return false
-        }
-        return /(cruise|ferry|liner|vessel|ship)/i.test(candidate)
-      }) ?? null
+    const vesselType = extractVesselType(row, vessel)
     const passengerCount = row.map(toPassengerCount).find((n) => n !== null) ?? null
 
     results.push({
@@ -168,9 +181,10 @@ function parseFlightsFromHtml(html: string): ParsedFlight[] {
     const cleaned = maybeFlight.toUpperCase().replace(/\s+/g, '')
     const origin =
       row.find((c) => /^[A-Z]{3}$/.test(c.trim().toUpperCase())) ?? UNKNOWN_AIRPORT_CODE
+    const iataCodes = row.filter((c) => /^[A-Z]{3}$/.test(c.trim().toUpperCase()))
     const destinationGuess =
       row.find((c) => /gib|gibraltar/i.test(c)) ??
-      row.filter((c) => /^[A-Z]{3}$/.test(c.trim().toUpperCase()))[1] ??
+      iataCodes[1] ??
       DEFAULT_DESTINATION_AIRPORT
     const passengerCount = row.map(toPassengerCount).find((n) => n !== null) ?? null
 

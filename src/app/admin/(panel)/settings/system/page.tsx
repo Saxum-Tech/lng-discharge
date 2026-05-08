@@ -17,6 +17,20 @@ const TIMEZONES = [
   'UTC',
 ]
 
+function formatSyncSummary(summary: {
+  flights_inserted: number
+  flights_updated: number
+  flights_skipped: number
+  cruises_inserted: number
+  cruises_updated: number
+  cruises_skipped: number
+  warnings: string[]
+}) {
+  const warningText =
+    summary.warnings.length > 0 ? ` Warnings: ${summary.warnings.join(' | ')}` : ''
+  return `Sync complete. Flights +${summary.flights_inserted} (updated ${summary.flights_updated}, skipped ${summary.flights_skipped}), Cruises +${summary.cruises_inserted} (updated ${summary.cruises_updated}, skipped ${summary.cruises_skipped}).${warningText}`
+}
+
 export default function SystemSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -105,12 +119,7 @@ export default function SystemSettingsPage() {
         return
       }
 
-      const s = payload.summary
-      const warningText = s.warnings.length > 0 ? ` Warnings: ${s.warnings.join(' | ')}` : ''
-      setSyncMessage(
-        `Sync complete. Flights +${s.flights_inserted} (updated ${s.flights_updated}, skipped ${s.flights_skipped}), ` +
-          `Cruises +${s.cruises_inserted} (updated ${s.cruises_updated}, skipped ${s.cruises_skipped}).${warningText}`,
-      )
+      setSyncMessage(formatSyncSummary(payload.summary))
     } catch (err: unknown) {
       setSyncError(err instanceof Error ? err.message : 'Sync failed.')
     } finally {

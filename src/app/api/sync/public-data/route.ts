@@ -46,7 +46,7 @@ function hasValidCronToken(authHeader: string | null) {
 export async function POST(request: Request) {
   try {
     const cronAuthorized = hasValidCronToken(request.headers.get('authorization'))
-    const superadminAuthorized = cronAuthorized ? false : await isSuperadminRequest()
+    const superadminAuthorized = !cronAuthorized && (await isSuperadminRequest())
 
     if (!cronAuthorized && !superadminAuthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
