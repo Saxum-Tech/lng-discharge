@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Suspense } from 'react'
+import { ADMIN_ROLES } from '@/lib/auth-roles'
 
 function AdminLoginForm() {
   const { signIn } = useAuth()
@@ -22,7 +23,7 @@ function AdminLoginForm() {
     setError('')
     setLoading(true)
     try {
-      await signIn(email, password)
+      await signIn(email, password, { allowedRoles: ADMIN_ROLES })
       router.push('/admin/companies')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign in failed')

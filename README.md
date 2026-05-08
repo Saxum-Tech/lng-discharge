@@ -1,34 +1,81 @@
 # LNG Discharge Window Planner
 
-A monorepo containing two portals powered by Supabase:
+A Next.js application with three runtime surfaces in one codebase:
 
-| Package | Description | Default Port |
-|---------|-------------|--------------|
-| `packages/app` | Stakeholder-facing frontend | 5173 |
-| `packages/admin` | Hosting-company admin console | 5174 |
-| `packages/shared` | Shared types, Supabase client, utilities | — |
+| Surface | Routes | Purpose |
+|---------|--------|---------|
+| Frontend portal | `/login`, `/calendar`, `/day/*`, `/analysis`, `/my-entries`, `/profile` | Stakeholder-facing LNG discharge planning portal for active `viewer` and `company_admin` users. |
+| Backend admin console | `/admin/login`, `/admin/*` | Hosting-company administration console for active `superadmin` users only. |
+| Backend API | `/api/*` | Server-side operational endpoints, including public data synchronization. |
 
 ## Quick start
 
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
-# Copy env files and fill in your Supabase credentials
-cp packages/app/.env.example packages/app/.env.local
-cp packages/admin/.env.example packages/admin/.env.local
+# Copy environment variables and fill in your Supabase credentials
+cp .env.example .env.local
 
-# Run both apps in development
-pnpm dev:app       # http://localhost:5173
-pnpm dev:admin     # http://localhost:5174
+# Run the application in development
+npm run dev
 ```
+
+The development server defaults to <http://localhost:3000>.
 
 ## Supabase setup
 
-1. Create a Supabase project at https://supabase.com
-2. Run the migrations in `supabase/migrations/` in order against your project
-3. Enable Storage and create a public bucket named `branding`
-4. Enable Row Level Security on all tables
+1. Create a Supabase project at <https://supabase.com>.
+2. Run the migrations in `supabase/migrations/` in order against your project.
+3. Enable Storage and create a public bucket named `branding`.
+4. Enable Row Level Security on all tables.
+
+## Test users
+
+Test users are created with the Supabase Admin API so credentials are not committed into migration history or production schema changes. The script is idempotent: it creates or updates the Auth user, the matching `profiles` row, and a reusable `LNG Test Company` record for the frontend portal account.
+
+```bash
+ALLOW_TEST_USER_SEEDING=true \
+NEXT_PUBLIC_SUPABASE_URL="https://YOUR_PROJECT.supabase.co" \
+SUPABASE_SERVICE_ROLE_KEY="YOUR_SERVICE_ROLE_KEY" \
+npm run seed:test-users
+```
+
+Default non-production accounts created by the script:
+
+| Account | Email | Default password | Role | Expected access |
+|---------|-------|------------------|------|-----------------|
+| Frontend test user | `frontend.test@lng.local` | `PortalTest!2026` | `viewer` | Frontend portal only |
+| Backend admin test user | `admin.test@lng.local` | `AdminTest!2026` | `superadmin` | Backend admin console only |
+
+You can override the defaults without changing code:
+
+```bash
+TEST_PORTAL_EMAIL="portal.user@example.com" \
+TEST_PORTAL_PASSWORD="replace-with-a-strong-password" \
+TEST_ADMIN_EMAIL="admin.user@example.com" \
+TEST_ADMIN_PASSWORD="replace-with-a-strong-password" \
+ALLOW_TEST_USER_SEEDING=true \
+NEXT_PUBLIC_SUPABASE_URL="https://YOUR_PROJECT.supabase.co" \
+SUPABASE_SERVICE_ROLE_KEY="YOUR_SERVICE_ROLE_KEY" \
+npm run seed:test-users
+```
+
+> **Database history note:** No SQL migration is required for these test users. They are environment-specific operational data. Keep this script restricted to non-production projects unless you intentionally want these accounts in that environment.
+
+## Access control model
+
+| Role | Access |
+|------|--------|
+| `superadmin` | Backend admin console only; full branding, company, user, audit, and system management. |
+| `company_admin` | Frontend portal; can manage own company's users where supported by RLS/API flows. |
+| `viewer` | Frontend portal; can read public data and add own private entries. |
+
+Access is enforced in multiple layers:
+
+- `middleware.ts` validates authenticated users with Supabase `getUser()` and checks both `profiles.role` and `profiles.is_active` before allowing protected routes.
+- Login pages call the shared auth context with route-specific allowed roles, so users receive immediate feedback when attempting to sign into the wrong surface.
+- Supabase RLS policies in `supabase/migrations/` enforce database-level access by role and company.
 
 ## Public data sync (cruise + flights)
 
@@ -49,22 +96,14 @@ Configure these environment variables:
 
 `aviation_api_key` is managed from System Settings and is used for free flight API ingestion when provided.
 
-## Role hierarchy
-
-| Role | Access |
-|------|--------|
-| `superadmin` | Admin console — full branding, company & user management |
-| `company_admin` | Frontend app + manage own company's users |
-| `viewer` | Frontend app — read public data, add own private entries |
-
 ## Project structure
 
-```
+```text
 lng-discharge/
-  packages/
-    app/          ← React + Vite stakeholder frontend
-    admin/        ← React + Vite hosting-company admin console
-    shared/       ← TypeScript types, Supabase client, utils
-  supabase/
-    migrations/   ← PostgreSQL schema & RLS policies
+  src/app/                 Next.js App Router pages and API routes
+  src/components/          Shared UI, portal, and admin components
+  src/contexts/            Client-side providers and auth state
+  src/lib/                 Supabase clients, shared types, role helpers, utilities
+  scripts/                 Operational scripts such as test-user seeding
+  supabase/migrations/     PostgreSQL schema, RLS policies, and migration history
 ```

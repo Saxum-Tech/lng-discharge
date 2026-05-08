@@ -1,18 +1,19 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { roleCanAccessAdmin, roleCanAccessPortal } from '@/lib/auth-roles'
 
 /**
  * Next.js middleware — runs on every non-static request.
  *
  * Routing rules:
  *  - /admin/login         → public (admin sign-in page)
- *  - /admin/**            → requires authenticated superadmin; non-admins → /admin/login
+ *  - /admin/**            → requires an active authenticated superadmin; others → /admin/login
  *  - /calendar, /day,
  *    /analysis,
  *    /my-entries,
- *    /profile             → requires any authenticated session → /login
- *  - /login               → public (portal sign-in); authenticated users are
+ *    /profile             → requires an active company_admin/viewer session → /login
+ *  - /login               → public (portal sign-in); active portal users are
  *                           redirected to /calendar
  */
 export async function middleware(request: NextRequest) {
@@ -43,20 +44,30 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
+  const portalPaths = ['/calendar', '/day', '/analysis', '/my-entries', '/profile']
+  const isPortalPath = portalPaths.some((portalPath) => pathname.startsWith(portalPath))
+  const userId = user?.id
+  const needsProfile = Boolean(
+    userId && (pathname.startsWith('/admin') || isPortalPath || pathname === '/login'),
+  )
+  const { data: profile } = needsProfile
+    ? await supabase
+        .from('profiles')
+        .select('role, is_active')
+        .eq('user_id', userId)
+        .maybeSingle()
+    : { data: null }
+
+  const canAccessAdmin = Boolean(profile?.is_active && roleCanAccessAdmin(profile.role))
+  const canAccessPortal = Boolean(profile?.is_active && roleCanAccessPortal(profile.role))
 
   // ── Admin section ──────────────────────────────────────────────────────────
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
     if (!user) {
       return NextResponse.redirect(new URL('/admin/login', request.url))
     }
-    // Verify the caller holds the superadmin role.
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single()
 
-    if (profile?.role !== 'superadmin') {
+    if (!canAccessAdmin) {
       const url = new URL('/admin/login', request.url)
       url.searchParams.set('error', 'unauthorized')
       return NextResponse.redirect(url)
@@ -64,16 +75,17 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Portal section ─────────────────────────────────────────────────────────
-  const portalPaths = ['/calendar', '/day', '/analysis', '/my-entries', '/profile']
-  if (portalPaths.some((p) => pathname.startsWith(p)) && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  if (isPortalPath && !canAccessPortal) {
+    const url = new URL('/login', request.url)
+    if (user) url.searchParams.set('error', 'unauthorized')
+    return NextResponse.redirect(url)
   }
 
-  // ── Redirect already-authenticated users away from login pages ────────────
-  if (user && pathname === '/login') {
+  // ── Redirect already-authorized users away from login pages ───────────────
+  if (user && pathname === '/login' && canAccessPortal) {
     return NextResponse.redirect(new URL('/calendar', request.url))
   }
-  if (user && pathname === '/admin/login') {
+  if (user && pathname === '/admin/login' && canAccessAdmin) {
     return NextResponse.redirect(new URL('/admin/companies', request.url))
   }
 

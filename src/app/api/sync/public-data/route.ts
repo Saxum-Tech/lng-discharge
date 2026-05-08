@@ -29,11 +29,11 @@ async function isSuperadminRequest() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, is_active')
     .eq('user_id', user.id)
     .single()
 
-  return profile?.role === 'superadmin'
+  return profile?.is_active === true && profile.role === 'superadmin'
 }
 
 function hasValidCronToken(authHeader: string | null) {
