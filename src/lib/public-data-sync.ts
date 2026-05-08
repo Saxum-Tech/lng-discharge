@@ -53,7 +53,10 @@ function normalizeDate(value: string): string | null {
     const day = dayFirst[1].padStart(2, '0')
     const month = dayFirst[2].padStart(2, '0')
     const yearRaw = dayFirst[3]
-    const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw
+    const year =
+      yearRaw.length === 2
+        ? `${Number.parseInt(yearRaw, 10) >= 50 ? '19' : '20'}${yearRaw}`
+        : yearRaw
     const hour = (dayFirst[4] ?? '00').padStart(2, '0')
     const minute = dayFirst[5] ?? '00'
     const parsed = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`)
@@ -76,7 +79,7 @@ function extractRows(html: string): string[][] {
 }
 
 function toPassengerCount(value: string): number | null {
-  const match = value.replace(/,/g, '').match(/\b(\d{2,6})\b/)
+  const match = value.replace(/,/g, '').match(/\b(\d{1,6})\b/)
   return match ? Number.parseInt(match[1], 10) : null
 }
 
@@ -181,7 +184,7 @@ function parseFlightsFromApi(json: unknown): ParsedFlight[] {
 async function fetchText(url: string): Promise<string> {
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'lng-discharge-sync/1.0',
+      'User-Agent': 'lng-discharge-public-data-sync/1.0',
     },
     cache: 'no-store',
   })
@@ -194,7 +197,7 @@ async function fetchText(url: string): Promise<string> {
 async function fetchJson(url: string): Promise<unknown> {
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'lng-discharge-sync/1.0',
+      'User-Agent': 'lng-discharge-public-data-sync/1.0',
     },
     cache: 'no-store',
   })
@@ -383,7 +386,7 @@ export async function runPublicDataSync(
     .single()
 
   if (options?.includeApiFlights !== false && settings?.aviation_api_key) {
-    const defaultUrl = `http://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(settings.aviation_api_key)}&arr_iata=GIB`
+    const defaultUrl = `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(settings.aviation_api_key)}&arr_iata=GIB`
     const apiUrl = process.env.FREE_FLIGHT_API_URL || defaultUrl
     try {
       const apiData = await fetchJson(apiUrl)
@@ -427,4 +430,3 @@ export async function runPublicDataSync(
     warnings,
   }
 }
-
