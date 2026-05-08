@@ -1,19 +1,24 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { PORTAL_ROLES } from '@/lib/auth-roles'
 
-export default function LoginPage() {
+function LoginForm() {
   const { signIn } = useAuth()
   const { settings } = useTheme()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const unauthorizedError = searchParams.get('error') === 'unauthorized'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(
+    unauthorizedError ? 'Access denied: an active portal user account is required.' : '',
+  )
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -21,7 +26,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      await signIn(email, password)
+      await signIn(email, password, { allowedRoles: PORTAL_ROLES })
       router.push('/calendar')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign in failed')
@@ -85,5 +90,13 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

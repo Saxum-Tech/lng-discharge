@@ -3,14 +3,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import type { Profile } from '@/lib/types'
+import type { Profile, UserRole } from '@/lib/types'
+import { roleIsAllowed } from '@/lib/auth-roles'
+
+interface SignInOptions {
+  allowedRoles?: readonly UserRole[]
+}
 
 interface AuthContextValue {
   session: Session | null
   user: User | null
   profile: Profile | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string, options?: SignInOptions) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -22,12 +27,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*, company:companies(*)')
       .eq('user_id', userId)
       .single()
-    setProfile(data ?? null)
+
+    if (error) {
+      setProfile(null)
+      return null
+    }
+
+    setProfile(data)
+    return data
   }
 
   useEffect(() => {
@@ -46,9 +58,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+  async function signIn(email: string, password: string, options?: SignInOptions) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
+
+    const signedInUser = data.user
+    if (!signedInUser) throw new Error('Sign in failed: no authenticated user returned.')
+
+    const signedInProfile = await fetchProfile(signedInUser.id)
+    if (!signedInProfile) {
+      await supabase.auth.signOut()
+      throw new Error('Access denied: no application profile exists for this account.')
+    }
+
+    if (!signedInProfile.is_active) {
+      await supabase.auth.signOut()
+      throw new Error('Access denied: this account is inactive.')
+    }
+
+    if (options?.allowedRoles && !roleIsAllowed(signedInProfile.role, options.allowedRoles)) {
+      await supabase.auth.signOut()
+      throw new Error('Access denied: this account does not have access to this area.')
+    }
   }
 
   async function signOut() {
