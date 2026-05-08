@@ -8,6 +8,21 @@ import { Upload } from 'lucide-react';
 
 const SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
 
+/**
+ * Only allow http/https URLs for image sources to prevent javascript: URI injection.
+ */
+function sanitizeImageUrl(url: string): string | undefined {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return url;
+    }
+  } catch {
+    // not a valid URL
+  }
+  return undefined;
+}
+
 export function BrandingPage() {
   const [, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,8 +134,8 @@ export function BrandingPage() {
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-gray-700">Logo</label>
                   <div className="flex items-center gap-4">
-                    {logoUrl ? (
-                      <img src={logoUrl} alt="Logo preview" className="h-12 w-auto rounded border border-gray-200 object-contain p-1" />
+                    {logoUrl && sanitizeImageUrl(logoUrl) ? (
+                      <img src={sanitizeImageUrl(logoUrl)} alt="Logo preview" className="h-12 w-auto rounded border border-gray-200 object-contain p-1" />
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded border border-dashed border-gray-300 text-gray-400 text-xs">
                         No logo
@@ -224,8 +239,8 @@ export function BrandingPage() {
               >
                 {/* Simulated navbar */}
                 <div className="flex items-center gap-2 px-4 py-3" style={{ backgroundColor: primaryColor }}>
-                  {logoUrl ? (
-                    <img src={logoUrl} alt="" className="h-6 w-auto" />
+                  {logoUrl && sanitizeImageUrl(logoUrl) ? (
+                    <img src={sanitizeImageUrl(logoUrl)} alt="" className="h-6 w-auto" />
                   ) : (
                     <div className="flex h-6 w-6 items-center justify-center rounded bg-white/20 text-white text-xs font-bold">
                       LNG
