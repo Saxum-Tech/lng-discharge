@@ -1,0 +1,22 @@
+{
+  "name": "lng-discharge",
+  "private": true,
+  "version": "1.0.0",
+  "description": "LNG Discharge Window Planner — monorepo",
+  "scripts": {
+    "dev:app": "pnpm --filter @lng/app dev",
+    "dev:admin": "pnpm --filter @lng/admin dev",
+    "build:app": "pnpm --filter @lng/app build",
+    "build:admin": "pnpm --filter @lng/admin build",
+    "build": "pnpm --filter @lng/shared build && pnpm --filter @lng/app build && pnpm --filter @lng/admin build",
+    "lint": "pnpm -r lint",
+    "type-check": "pnpm -r type-check"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  }
+}
