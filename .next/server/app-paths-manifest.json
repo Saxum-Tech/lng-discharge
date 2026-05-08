@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/login/page": "app/admin/login/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/(portal)/analysis/page": "app/(portal)/analysis/page.js",
+  "/(portal)/my-entries/page": "app/(portal)/my-entries/page.js",
+  "/(portal)/day/[date]/page": "app/(portal)/day/[date]/page.js",
+  "/(portal)/profile/page": "app/(portal)/profile/page.js",
+  "/admin/(panel)/audit/page": "app/admin/(panel)/audit/page.js",
+  "/(portal)/calendar/page": "app/(portal)/calendar/page.js",
+  "/admin/(panel)/page": "app/admin/(panel)/page.js",
+  "/admin/(panel)/companies/page": "app/admin/(panel)/companies/page.js",
+  "/admin/(panel)/settings/system/page": "app/admin/(panel)/settings/system/page.js",
+  "/admin/(panel)/settings/branding/page": "app/admin/(panel)/settings/branding/page.js",
+  "/admin/(panel)/users/page": "app/admin/(panel)/users/page.js"
+}

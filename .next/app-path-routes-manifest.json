@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/admin/login/page": "/admin/login",
+  "/login/page": "/login",
+  "/page": "/",
+  "/(portal)/analysis/page": "/analysis",
+  "/(portal)/my-entries/page": "/my-entries",
+  "/(portal)/day/[date]/page": "/day/[date]",
+  "/(portal)/profile/page": "/profile",
+  "/admin/(panel)/audit/page": "/admin/audit",
+  "/(portal)/calendar/page": "/calendar",
+  "/admin/(panel)/page": "/admin",
+  "/admin/(panel)/companies/page": "/admin/companies",
+  "/admin/(panel)/settings/system/page": "/admin/settings/system",
+  "/admin/(panel)/settings/branding/page": "/admin/settings/branding",
+  "/admin/(panel)/users/page": "/admin/users"
+}
