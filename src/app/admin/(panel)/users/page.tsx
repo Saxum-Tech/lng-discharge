@@ -283,13 +283,35 @@ function InviteModal({
     e.preventDefault()
     setSaving(true)
     setError('')
-    // inviteUserByEmail requires the service-role key — wire up via a server
-    // action or Edge Function in production.
-    const { error } = await supabase.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName, role, company_id: companyId || null },
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session?.access_token) {
+      setSaving(false)
+      setError('Your session has expired. Please sign in again.')
+      return
+    }
+
+    const response = await fetch('/api/admin/users/invite', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        email,
+        fullName,
+        role,
+        companyId: companyId || null,
+      }),
     })
+
+    const result = (await response.json()) as { error?: string }
+
     setSaving(false)
-    if (error) setError(error.message)
+    if (!response.ok) setError(result.error ?? 'Failed to send invite.')
     else onSaved()
   }
 
