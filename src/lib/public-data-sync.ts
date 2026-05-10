@@ -15,6 +15,7 @@ type ParsedFlight = {
   scheduled_departure: string | null
   aircraft_type: string | null
   passenger_count: number | null
+  delay_minutes: number | null
 }
 
 type ParsedCruise = {
@@ -368,6 +369,7 @@ function parseLegacyFlightsFromRows(rows: string[][]): ParsedFlight[] {
       scheduled_departure: null,
       aircraft_type: null,
       passenger_count: null,
+      delay_minutes: delayMinutes && delayMinutes > 0 ? delayMinutes : null,
     })
   }
 
@@ -462,6 +464,7 @@ function parseFlightsFromHtml(html: string): ParsedFlight[] {
         scheduled_departure: direction === 'departure' ? scheduled : null,
         aircraft_type: null,
         passenger_count: null,
+        delay_minutes: null,
       })
     }
 
@@ -502,10 +505,17 @@ function parseFlightsFromApi(json: unknown): ParsedFlight[] {
     }
 
     const flightNumber = record.flight?.iata || record.flight?.icao || record.flight?.number
-    const arrival = normalizeDate(
-      record.arrival?.scheduled ?? record.arrival?.estimated ?? record.arrival?.actual ?? '',
-    )
+    const scheduledArrivalRaw = record.arrival?.scheduled ?? ''
+    const estimatedArrivalRaw = record.arrival?.estimated ?? record.arrival?.actual ?? ''
+    const arrival = normalizeDate(scheduledArrivalRaw || estimatedArrivalRaw)
     if (!flightNumber || !arrival) continue
+
+    const scheduledArrival = normalizeDate(scheduledArrivalRaw)
+    const estimatedArrival = normalizeDate(estimatedArrivalRaw)
+    const delayMinutes =
+      scheduledArrival && estimatedArrival
+        ? Math.max(0, Math.round((new Date(estimatedArrival).getTime() - new Date(scheduledArrival).getTime()) / 60000))
+        : null
 
     flights.push({
       flight_number: flightNumber.toUpperCase().replace(/\s+/g, ''),
@@ -518,6 +528,7 @@ function parseFlightsFromApi(json: unknown): ParsedFlight[] {
       ),
       aircraft_type: record.aircraft?.iata ?? null,
       passenger_count: null,
+      delay_minutes: delayMinutes && delayMinutes > 0 ? delayMinutes : null,
     })
   }
 
@@ -713,7 +724,7 @@ async function syncFlights(
   for (const flight of flights) {
     const { data: existing, error: lookupError } = await admin
       .from('flights')
-      .select('id, scheduled_departure, aircraft_type, passenger_count')
+      .select('id, scheduled_departure, aircraft_type, passenger_count, notes')
       .eq('company_id', owner.companyId)
       .eq('flight_number', flight.flight_number)
       .eq('origin', flight.origin)
@@ -727,7 +738,10 @@ async function syncFlights(
       ...flight,
       company_id: owner.companyId,
       created_by: owner.userId,
-      notes: 'Synced from public source',
+      notes:
+        flight.delay_minutes && flight.delay_minutes > 0
+          ? `Synced from public source | DELAYED ${flight.delay_minutes} min`
+          : 'Synced from public source',
       is_private: false,
     }
 
@@ -742,7 +756,8 @@ async function syncFlights(
     const shouldUpdate =
       existingRow.scheduled_departure !== row.scheduled_departure ||
       existingRow.aircraft_type !== row.aircraft_type ||
-      existingRow.passenger_count !== row.passenger_count
+      existingRow.passenger_count !== row.passenger_count ||
+      existingRow.notes !== row.notes
 
     if (!shouldUpdate) {
       skipped += 1
@@ -755,6 +770,7 @@ async function syncFlights(
         scheduled_departure: row.scheduled_departure,
         aircraft_type: row.aircraft_type,
         passenger_count: row.passenger_count,
+        notes: row.notes,
       })
       .eq('id', existingRow.id)
     if (updateError) throw updateError
@@ -788,7 +804,10 @@ async function syncCruises(
       ...cruise,
       company_id: owner.companyId,
       created_by: owner.userId,
-      notes: 'Synced from public source',
+      notes:
+        flight.delay_minutes && flight.delay_minutes > 0
+          ? `Synced from public source | DELAYED ${flight.delay_minutes} min`
+          : 'Synced from public source',
       is_private: false,
     }
 
@@ -803,7 +822,8 @@ async function syncCruises(
     const shouldUpdate =
       existingRow.departure_date !== row.departure_date ||
       existingRow.vessel_type !== row.vessel_type ||
-      existingRow.passenger_count !== row.passenger_count
+      existingRow.passenger_count !== row.passenger_count ||
+      existingRow.notes !== row.notes
 
     if (!shouldUpdate) {
       skipped += 1
@@ -816,6 +836,7 @@ async function syncCruises(
         departure_date: row.departure_date,
         vessel_type: row.vessel_type,
         passenger_count: row.passenger_count,
+        notes: row.notes,
       })
       .eq('id', existingRow.id)
     if (updateError) throw updateError

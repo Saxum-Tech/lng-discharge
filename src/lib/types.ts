@@ -113,6 +113,8 @@ export interface DayEvent {
   scheduled_departure?: string
   is_private: boolean
   company_id: string
+  notes?: string | null
+  delay_minutes?: number | null
 }
 
 // ─── API / Form types ─────────────────────────────────────────────────────

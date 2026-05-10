@@ -7,7 +7,7 @@ import { buildDayEvents, computeDischargeWindows, formatDuration } from '@/lib/s
 import type { DayEvent } from '@/lib/types'
 import { useTheme } from '@/contexts/ThemeContext'
 import { format, parseISO } from 'date-fns'
-import { ArrowLeft, Plane, Ship, Clock } from 'lucide-react'
+import { ArrowLeft, PlaneLanding, PlaneTakeoff, Ship, Clock, TriangleAlert } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatTimeInZone } from '@/lib/utils'
 
@@ -87,19 +87,16 @@ export default function DayDetailPage() {
                 {events.map((event) => (
                   <li key={event.id} className="flex items-start gap-3">
                     <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
-                      {event.type === 'flight' ? <Plane size={12} /> : <Ship size={12} />}
+                      {event.type === 'flight' ? (event.flight_direction === 'departure' ? <PlaneTakeoff size={12} /> : <PlaneLanding size={12} />) : <Ship size={12} />}
                     </span>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{event.title}</p>
                       <p className="text-xs text-gray-400">
                         {event.type === 'flight' ? (
                           <>
-                            Scheduled arrival: {formatTimeInZone(event.scheduled_arrival ?? event.time)}
-                            {' · '}
-                            Scheduled departure:{' '}
-                            {event.scheduled_departure
-                              ? formatTimeInZone(event.scheduled_departure)
-                              : '—'}
+                            {event.flight_direction === 'departure'
+                              ? `Scheduled departure: ${event.scheduled_departure ? formatTimeInZone(event.scheduled_departure) : '—'}`
+                              : `Scheduled arrival: ${formatTimeInZone(event.scheduled_arrival ?? event.time)}`}
                           </>
                         ) : (
                           <>
@@ -113,6 +110,11 @@ export default function DayDetailPage() {
                           </span>
                         )}
                       </p>
+                      {event.type === 'flight' && event.delay_minutes && event.delay_minutes > 0 && (
+                        <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-red-600">
+                          <TriangleAlert size={12} /> Delayed by {event.delay_minutes} min
+                        </p>
+                      )}
                     </div>
                   </li>
                 ))}
