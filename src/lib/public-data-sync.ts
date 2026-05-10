@@ -534,6 +534,61 @@ async function fetchJson(url: string): Promise<unknown> {
   return response.json()
 }
 
+function toIsoDate(value: Date): string {
+  return value.toISOString().slice(0, 10)
+}
+
+function buildAviationStackWindowUrls(apiKey: string): string[] {
+  const urls: string[] = []
+  const today = new Date()
+  const startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
+  const endDate = new Date(startDate)
+  endDate.setUTCMonth(endDate.getUTCMonth() + 2)
+
+  for (let cursor = new Date(startDate); cursor < endDate; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    const flightDate = toIsoDate(cursor)
+    for (const key of ['arr_iata', 'dep_iata']) {
+      urls.push(
+        `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(apiKey)}&${key}=${DEFAULT_DESTINATION_AIRPORT}&flight_date=${flightDate}`,
+      )
+    }
+  }
+
+  return urls
+}
+
+function parseAviationStackPagination(json: unknown): { total: number; count: number; offset: number } | null {
+  if (!json || typeof json !== 'object') return null
+  const pagination = (json as { pagination?: unknown }).pagination
+  if (!pagination || typeof pagination !== 'object') return null
+
+  const meta = pagination as { total?: unknown; count?: unknown; offset?: unknown }
+  const total = typeof meta.total === 'number' ? meta.total : 0
+  const count = typeof meta.count === 'number' ? meta.count : 0
+  const offset = typeof meta.offset === 'number' ? meta.offset : 0
+  return { total, count, offset }
+}
+
+async function fetchAllAviationStackFlightsForUrl(baseUrl: string): Promise<ParsedFlight[]> {
+  const flights: ParsedFlight[] = []
+  const limit = 100
+  let offset = 0
+
+  for (;;) {
+    const separator = baseUrl.includes('?') ? '&' : '?'
+    const pageUrl = `${baseUrl}${separator}limit=${limit}&offset=${offset}`
+    const apiData = await fetchJson(pageUrl)
+    flights.push(...parseFlightsFromApi(apiData))
+
+    const pagination = parseAviationStackPagination(apiData)
+    if (!pagination || pagination.count <= 0) break
+    offset += pagination.count
+    if (offset >= pagination.total) break
+  }
+
+  return flights
+}
+
 async function resolveSyncOwner(admin: SupabaseClient): Promise<SyncOwner> {
   const { data: preferred, error: preferredError } = await admin
     .from('profiles')
@@ -716,11 +771,27 @@ export async function runPublicDataSync(
   const aviationApiKey = settings?.aviation_api_key || process.env.AVIATIONSTACK_API_KEY
 
   if (options?.includeApiFlights !== false && aviationApiKey) {
-    const defaultUrl = `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(aviationApiKey)}&arr_iata=${DEFAULT_DESTINATION_AIRPORT}`
-    const apiUrl = process.env.FREE_FLIGHT_API_URL || defaultUrl
+    const apiUrls = process.env.FREE_FLIGHT_API_URL
+      ? [process.env.FREE_FLIGHT_API_URL]
+      : buildAviationStackWindowUrls(aviationApiKey)
     try {
-      const apiData = await fetchJson(apiUrl)
-      flights = [...flights, ...parseFlightsFromApi(apiData)]
+      for (const apiUrl of apiUrls) {
+        flights = [...flights, ...(await fetchAllAviationStackFlightsForUrl(apiUrl))]
+      }
+      if (!process.env.FREE_FLIGHT_API_URL && flights.length === 0) {
+        const fallbackUrls = ['arr_iata', 'dep_iata'].map(
+          (key) =>
+            `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(aviationApiKey)}&${key}=${DEFAULT_DESTINATION_AIRPORT}`,
+        )
+        for (const apiUrl of fallbackUrls) {
+          flights = [...flights, ...(await fetchAllAviationStackFlightsForUrl(apiUrl))]
+        }
+        if (flights.length > 0) {
+          warnings.push(
+            'AviationStack date-window queries returned no flights; used non-date fallback endpoints for GIB arrivals/departures.',
+          )
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Flight API sync failed.'
       warnings.push(redactSensitiveText(message))
