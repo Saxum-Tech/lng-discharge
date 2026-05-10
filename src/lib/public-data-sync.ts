@@ -633,8 +633,24 @@ async function resolveSyncOwner(admin: SupabaseClient): Promise<SyncOwner> {
 
   const f = fallback?.[0]
   if (!f?.company_id || !f.user_id) {
+    const [{ count: totalProfiles, error: totalProfilesError }, { count: activeProfiles, error: activeProfilesError }, { count: assignedCompanies, error: assignedCompaniesError }, { count: activeAssignedProfiles, error: activeAssignedProfilesError }] = await Promise.all([
+      admin.from('profiles').select('id', { count: 'exact', head: true }),
+      admin.from('profiles').select('id', { count: 'exact', head: true }).eq('is_active', true),
+      admin.from('profiles').select('id', { count: 'exact', head: true }).not('company_id', 'is', null),
+      admin
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .not('company_id', 'is', null),
+    ])
+
+    if (totalProfilesError) throw totalProfilesError
+    if (activeProfilesError) throw activeProfilesError
+    if (assignedCompaniesError) throw assignedCompaniesError
+    if (activeAssignedProfilesError) throw activeAssignedProfilesError
+
     throw new Error(
-      'No active profile with company_id found. Assign at least one active user to a company before syncing.',
+      `No active profile with company_id found. Assign at least one active user to a company before syncing. (profiles=${totalProfiles ?? 0}, active=${activeProfiles ?? 0}, assigned_company=${assignedCompanies ?? 0}, active_and_assigned=${activeAssignedProfiles ?? 0})`,
     )
   }
 
