@@ -37,8 +37,7 @@ export default function DayDetailPage() {
       supabase
         .from('cruise_schedules')
         .select('*')
-        .gte('arrival_date', start)
-        .lte('arrival_date', end)
+        .or(`and(arrival_date.gte.${start},arrival_date.lte.${end}),and(departure_date.gte.${start},departure_date.lte.${end})`)
         .order('arrival_date'),
     ])
 
@@ -104,8 +103,8 @@ export default function DayDetailPage() {
                           </>
                         ) : (
                           <>
+                            {event.cruise_direction === 'departure' ? 'Scheduled departure: ' : 'Scheduled arrival: '}
                             {formatTimeInZone(event.time)}
-                            {event.end_time && ` → ${formatTimeInZone(event.end_time)}`}
                           </>
                         )}
                         {event.is_private && (

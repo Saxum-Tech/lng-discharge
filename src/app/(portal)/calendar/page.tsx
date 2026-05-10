@@ -40,8 +40,7 @@ export default function CalendarPage() {
       supabase
         .from('cruise_schedules')
         .select('*')
-        .gte('arrival_date', start)
-        .lt('arrival_date', end)
+        .or(`and(arrival_date.gte.${start},arrival_date.lt.${end}),and(departure_date.gte.${start},departure_date.lt.${end})`)
         .order('arrival_date'),
     ])
 

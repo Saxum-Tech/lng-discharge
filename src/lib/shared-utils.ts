@@ -4,6 +4,36 @@ import type { Flight, CruiseSchedule, DischargeWindow, DayEvent } from './types'
  * Merge flights and cruises into a flat list of DayEvents sorted by time.
  */
 export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): DayEvent[] {
+  const cruiseEvents: DayEvent[] = cruises.flatMap((c) => {
+    const vesselLabel = `🚢 ${c.vessel_name}${c.vessel_type ? ` (${c.vessel_type})` : ''}`
+    const arrivals: DayEvent[] = [
+      {
+        id: `${c.id}:arrival`,
+        type: 'cruise',
+        title: `${vesselLabel} — Arrival`,
+        time: c.arrival_date,
+        cruise_direction: 'arrival',
+        is_private: c.is_private,
+        company_id: c.company_id,
+      },
+    ]
+
+    if (!c.departure_date) return arrivals
+
+    return [
+      ...arrivals,
+      {
+        id: `${c.id}:departure`,
+        type: 'cruise',
+        title: `${vesselLabel} — Departure`,
+        time: c.departure_date,
+        cruise_direction: 'departure',
+        is_private: c.is_private,
+        company_id: c.company_id,
+      },
+    ]
+  })
+
   const events: DayEvent[] = [
     ...flights.map(
       (f): DayEvent => {
@@ -24,17 +54,7 @@ export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): Da
         }
       },
     ),
-    ...cruises.map(
-      (c): DayEvent => ({
-        id: c.id,
-        type: 'cruise',
-        title: `🚢 ${c.vessel_name}${c.vessel_type ? ` (${c.vessel_type})` : ''}`,
-        time: c.arrival_date,
-        end_time: c.departure_date ?? undefined,
-        is_private: c.is_private,
-        company_id: c.company_id,
-      }),
-    ),
+    ...cruiseEvents,
   ]
 
   events.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
