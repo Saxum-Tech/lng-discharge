@@ -713,8 +713,10 @@ export async function runPublicDataSync(
     .eq('id', SETTINGS_ID)
     .maybeSingle()
 
-  if (options?.includeApiFlights !== false && settings?.aviation_api_key) {
-    const defaultUrl = `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(settings.aviation_api_key)}&arr_iata=${DEFAULT_DESTINATION_AIRPORT}`
+  const aviationApiKey = settings?.aviation_api_key || process.env.AVIATIONSTACK_API_KEY
+
+  if (options?.includeApiFlights !== false && aviationApiKey) {
+    const defaultUrl = `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(aviationApiKey)}&arr_iata=${DEFAULT_DESTINATION_AIRPORT}`
     const apiUrl = process.env.FREE_FLIGHT_API_URL || defaultUrl
     try {
       const apiData = await fetchJson(apiUrl)
@@ -723,6 +725,10 @@ export async function runPublicDataSync(
       const message = error instanceof Error ? error.message : 'Flight API sync failed.'
       warnings.push(redactSensitiveText(message))
     }
+  } else if (options?.includeApiFlights !== false) {
+    warnings.push(
+      'No AviationStack key configured. Set app_settings.aviation_api_key or AVIATIONSTACK_API_KEY.',
+    )
   }
 
   const dedupedFlights = Array.from(

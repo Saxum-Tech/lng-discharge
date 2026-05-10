@@ -92,9 +92,10 @@ Configure these environment variables:
   - `CRON_SECRET` is also accepted (useful for Vercel cron auth header)
 - `GIBRALTAR_CRUISE_SCHEDULE_URL` (optional override)
 - `GIBRALTAR_AIRPORT_FLIGHTS_URL` (optional override)
+- `AVIATIONSTACK_API_KEY` (optional fallback if no key is saved in System Settings)
 - `FREE_FLIGHT_API_URL` (optional override)
 
-`aviation_api_key` is managed from System Settings and is used for free flight API ingestion when provided.
+`aviation_api_key` is managed from System Settings and is used for free flight API ingestion when provided. If that setting is blank, the sync falls back to `AVIATIONSTACK_API_KEY`.
 
 ## Project structure
 
