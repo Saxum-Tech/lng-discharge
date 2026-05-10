@@ -483,14 +483,28 @@ function parseFlightsFromApi(json: unknown): ParsedFlight[] {
     if (!item || typeof item !== 'object') continue
 
     const record = item as {
-      flight?: { iata?: string; number?: string }
-      departure?: { iata?: string; airport?: string; scheduled?: string }
-      arrival?: { iata?: string; airport?: string; scheduled?: string }
+      flight?: { iata?: string; icao?: string; number?: string }
+      departure?: {
+        iata?: string
+        airport?: string
+        scheduled?: string
+        estimated?: string
+        actual?: string
+      }
+      arrival?: {
+        iata?: string
+        airport?: string
+        scheduled?: string
+        estimated?: string
+        actual?: string
+      }
       aircraft?: { iata?: string }
     }
 
-    const flightNumber = record.flight?.iata || record.flight?.number
-    const arrival = normalizeDate(record.arrival?.scheduled ?? '')
+    const flightNumber = record.flight?.iata || record.flight?.icao || record.flight?.number
+    const arrival = normalizeDate(
+      record.arrival?.scheduled ?? record.arrival?.estimated ?? record.arrival?.actual ?? '',
+    )
     if (!flightNumber || !arrival) continue
 
     flights.push({
@@ -499,7 +513,9 @@ function parseFlightsFromApi(json: unknown): ParsedFlight[] {
       destination:
         record.arrival?.iata || record.arrival?.airport || DEFAULT_DESTINATION_AIRPORT,
       scheduled_arrival: arrival,
-      scheduled_departure: normalizeDate(record.departure?.scheduled ?? ''),
+      scheduled_departure: normalizeDate(
+        record.departure?.scheduled ?? record.departure?.estimated ?? record.departure?.actual ?? '',
+      ),
       aircraft_type: record.aircraft?.iata ?? null,
       passenger_count: null,
     })
