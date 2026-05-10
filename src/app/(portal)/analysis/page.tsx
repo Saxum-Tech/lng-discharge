@@ -29,15 +29,14 @@ export default function AnalysisPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const start = new Date(year, month - 1, 1).toISOString()
-    const end = new Date(year, month, 1).toISOString()
+    const start = new Date(Date.UTC(year, month - 1, 1)).toISOString()
+    const end = new Date(Date.UTC(year, month, 1)).toISOString()
 
     const [{ data: flightData }, { data: cruiseData }] = await Promise.all([
       supabase
         .from('flights')
         .select('*')
-        .gte('scheduled_arrival', start)
-        .lt('scheduled_arrival', end)
+        .or(`and(scheduled_arrival.gte.${start},scheduled_arrival.lt.${end}),and(scheduled_departure.gte.${start},scheduled_departure.lt.${end})`)
         .order('scheduled_arrival'),
       supabase
         .from('cruise_schedules')

@@ -556,6 +556,50 @@ function toIsoDate(value: Date): string {
 
 const AVIATIONSTACK_FORWARD_DAYS = 7
 
+function withinNextDays(timestamp: string, days: number): boolean {
+  const time = new Date(timestamp).getTime()
+  if (!Number.isFinite(time)) return false
+
+  const now = new Date()
+  const start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const end = start + days * 24 * 60 * 60 * 1000
+  return time >= start && time < end
+}
+
+function flightKey(flight: ParsedFlight): string {
+  const scheduled = flight.scheduled_departure ?? flight.scheduled_arrival
+  return `${flight.flight_number}|${flight.origin}|${flight.destination}|${scheduled.slice(0, 16)}`
+}
+
+function compareAirportHtmlAndApiFlights(
+  htmlFlights: ParsedFlight[],
+  apiFlights: ParsedFlight[],
+  days = AVIATIONSTACK_FORWARD_DAYS,
+): string[] {
+  const htmlWindow = htmlFlights.filter((flight) => withinNextDays(flight.scheduled_arrival, days))
+  const apiWindow = apiFlights.filter((flight) => withinNextDays(flight.scheduled_arrival, days))
+
+  const htmlKeys = new Set(htmlWindow.map(flightKey))
+  const apiKeys = new Set(apiWindow.map(flightKey))
+
+  const missingInApi = htmlWindow.filter((flight) => !apiKeys.has(flightKey(flight)))
+  const missingInHtml = apiWindow.filter((flight) => !htmlKeys.has(flightKey(flight)))
+
+  const warnings: string[] = []
+  if (missingInApi.length > 0) {
+    warnings.push(
+      `Website/API mismatch (next ${days} days): ${missingInApi.length} flights found on Gibraltar website but not in API results.`,
+    )
+  }
+  if (missingInHtml.length > 0) {
+    warnings.push(
+      `Website/API mismatch (next ${days} days): ${missingInHtml.length} flights found in API results but not on Gibraltar website.`,
+    )
+  }
+
+  return warnings
+}
+
 function buildAviationStackWindowUrls(apiKey: string, airportIata = DEFAULT_DESTINATION_AIRPORT): string[] {
   const urls: string[] = []
   const today = new Date()
@@ -794,7 +838,8 @@ export async function runPublicDataSync(
     'https://www.gibraltarairport.gi/airlines-and-destinations/live-flight-information'
 
   const [cruiseHtml, airportHtml] = await Promise.all([fetchText(cruiseUrl), fetchText(airportUrl)])
-  let flights = parseFlightsFromHtml(airportHtml)
+  const websiteFlights = parseFlightsFromHtml(airportHtml)
+  let flights = [...websiteFlights]
   const cruises = parseCruisesFromHtml(cruiseHtml)
 
   const { data: settings } = await admin
@@ -805,13 +850,17 @@ export async function runPublicDataSync(
 
   const aviationApiKey = settings?.aviation_api_key || process.env.AVIATIONSTACK_API_KEY
 
+  const apiFlights: ParsedFlight[] = []
+
   if (options?.includeApiFlights !== false && aviationApiKey) {
     const apiUrls = process.env.FREE_FLIGHT_API_URL
       ? [process.env.FREE_FLIGHT_API_URL]
       : buildAviationStackWindowUrls(aviationApiKey)
     try {
       for (const apiUrl of apiUrls) {
-        flights = [...flights, ...(await fetchAllAviationStackFlightsForUrl(apiUrl))]
+        const apiResult = await fetchAllAviationStackFlightsForUrl(apiUrl)
+        apiFlights.push(...apiResult)
+        flights = [...flights, ...apiResult]
       }
       if (!process.env.FREE_FLIGHT_API_URL && flights.length === 0) {
         const fallbackUrls = ['arr_iata', 'dep_iata'].map(
@@ -819,7 +868,9 @@ export async function runPublicDataSync(
             `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(aviationApiKey)}&${key}=${DEFAULT_DESTINATION_AIRPORT}`,
         )
         for (const apiUrl of fallbackUrls) {
-          flights = [...flights, ...(await fetchAllAviationStackFlightsForUrl(apiUrl))]
+          const apiResult = await fetchAllAviationStackFlightsForUrl(apiUrl)
+          apiFlights.push(...apiResult)
+          flights = [...flights, ...apiResult]
         }
         if (flights.length > 0) {
           warnings.push(
@@ -836,6 +887,8 @@ export async function runPublicDataSync(
       'No AviationStack key configured. Set app_settings.aviation_api_key or AVIATIONSTACK_API_KEY.',
     )
   }
+
+  warnings.push(...compareAirportHtmlAndApiFlights(websiteFlights, apiFlights))
 
   const dedupedFlights = Array.from(
     new Map(
