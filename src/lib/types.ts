@@ -108,6 +108,7 @@ export interface DayEvent {
   time: string // ISO timestamp
   end_time?: string
   flight_direction?: 'arrival' | 'departure'
+  cruise_direction?: 'arrival' | 'departure'
   scheduled_arrival?: string
   scheduled_departure?: string
   is_private: boolean
