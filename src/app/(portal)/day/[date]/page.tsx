@@ -9,6 +9,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { format, parseISO } from 'date-fns'
 import { ArrowLeft, Plane, Ship, Clock } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { formatTimeInZone } from '@/lib/utils'
 
 export default function DayDetailPage() {
   const params = useParams()
@@ -92,9 +93,21 @@ export default function DayDetailPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{event.title}</p>
                       <p className="text-xs text-gray-400">
-                        {format(parseISO(event.time), 'HH:mm')}
-                        {event.end_time &&
-                          ` → ${format(parseISO(event.end_time), 'HH:mm')}`}
+                        {event.type === 'flight' ? (
+                          <>
+                            Scheduled arrival: {formatTimeInZone(event.scheduled_arrival ?? event.time)}
+                            {' · '}
+                            Scheduled departure:{' '}
+                            {event.scheduled_departure
+                              ? formatTimeInZone(event.scheduled_departure)
+                              : '—'}
+                          </>
+                        ) : (
+                          <>
+                            {formatTimeInZone(event.time)}
+                            {event.end_time && ` → ${formatTimeInZone(event.end_time)}`}
+                          </>
+                        )}
                         {event.is_private && (
                           <span className="ml-2 rounded bg-gray-100 px-1 py-0.5 text-gray-500">
                             Private
