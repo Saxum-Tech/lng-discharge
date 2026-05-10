@@ -6,15 +6,22 @@ import type { Flight, CruiseSchedule, DischargeWindow, DayEvent } from './types'
 export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): DayEvent[] {
   const events: DayEvent[] = [
     ...flights.map(
-      (f): DayEvent => ({
-        id: f.id,
-        type: 'flight',
-        title: `✈ ${f.flight_number} — ${f.origin} → ${f.destination}`,
-        time: f.scheduled_arrival,
-        end_time: f.scheduled_departure ?? undefined,
-        is_private: f.is_private,
-        company_id: f.company_id,
-      }),
+      (f): DayEvent => {
+        const isDepartureFlight = f.origin === 'GIB'
+
+        return {
+          id: f.id,
+          type: 'flight',
+          title: `✈ ${f.flight_number} — ${isDepartureFlight ? 'Departure' : 'Arrival'}`,
+          time: f.scheduled_arrival,
+          end_time: f.scheduled_departure ?? undefined,
+          flight_direction: isDepartureFlight ? 'departure' : 'arrival',
+          scheduled_arrival: f.scheduled_arrival,
+          scheduled_departure: f.scheduled_departure ?? undefined,
+          is_private: f.is_private,
+          company_id: f.company_id,
+        }
+      },
     ),
     ...cruises.map(
       (c): DayEvent => ({
