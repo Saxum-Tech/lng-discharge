@@ -8,12 +8,13 @@ export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): Da
     ...flights.map(
       (f): DayEvent => {
         const isDepartureFlight = f.origin === 'GIB'
+        const primaryTime = isDepartureFlight ? (f.scheduled_departure ?? f.scheduled_arrival) : f.scheduled_arrival
 
         return {
           id: f.id,
           type: 'flight',
           title: `✈ ${f.flight_number} — ${isDepartureFlight ? 'Departure' : 'Arrival'}`,
-          time: f.scheduled_arrival,
+          time: primaryTime,
           end_time: f.scheduled_departure ?? undefined,
           flight_direction: isDepartureFlight ? 'departure' : 'arrival',
           scheduled_arrival: f.scheduled_arrival,
@@ -92,10 +93,10 @@ export function formatDuration(hours: number): string {
  */
 export function getDaysInMonth(year: number, month: number): string[] {
   const days: string[] = []
-  const date = new Date(year, month - 1, 1)
-  while (date.getMonth() === month - 1) {
+  const date = new Date(Date.UTC(year, month - 1, 1))
+  while (date.getUTCMonth() === month - 1) {
     days.push(date.toISOString().slice(0, 10))
-    date.setDate(date.getDate() + 1)
+    date.setUTCDate(date.getUTCDate() + 1)
   }
   return days
 }
