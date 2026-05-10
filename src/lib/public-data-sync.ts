@@ -554,18 +554,21 @@ function toIsoDate(value: Date): string {
   return value.toISOString().slice(0, 10)
 }
 
-function buildAviationStackWindowUrls(apiKey: string): string[] {
+const AVIATIONSTACK_FORWARD_DAYS = 7
+
+function buildAviationStackWindowUrls(apiKey: string, airportIata = DEFAULT_DESTINATION_AIRPORT): string[] {
   const urls: string[] = []
   const today = new Date()
   const startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
-  const endDate = new Date(startDate)
-  endDate.setUTCMonth(endDate.getUTCMonth() + 2)
 
-  for (let cursor = new Date(startDate); cursor < endDate; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+  for (let offset = 0; offset < AVIATIONSTACK_FORWARD_DAYS; offset += 1) {
+    const cursor = new Date(startDate)
+    cursor.setUTCDate(startDate.getUTCDate() + offset)
     const flightDate = toIsoDate(cursor)
+
     for (const key of ['arr_iata', 'dep_iata']) {
       urls.push(
-        `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(apiKey)}&${key}=${DEFAULT_DESTINATION_AIRPORT}&flight_date=${flightDate}`,
+        `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(apiKey)}&${key}=${airportIata}&flight_date=${flightDate}`,
       )
     }
   }
