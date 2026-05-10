@@ -21,6 +21,11 @@ export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): Da
           scheduled_departure: f.scheduled_departure ?? undefined,
           is_private: f.is_private,
           company_id: f.company_id,
+          notes: f.notes,
+          delay_minutes: (() => {
+            const m = f.notes?.match(/DELAYED\s+(\d+)\s+min/i)
+            return m ? Number.parseInt(m[1], 10) : null
+          })(),
         }
       },
     ),
