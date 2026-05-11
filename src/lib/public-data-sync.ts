@@ -579,10 +579,6 @@ async function fetchJson(url: string): Promise<unknown> {
   return response.json()
 }
 
-function toIsoDate(value: Date): string {
-  return value.toISOString().slice(0, 10)
-}
-
 const AVIATIONSTACK_FORWARD_DAYS = 7
 
 function withinNextDays(timestamp: string, days: number): boolean {
@@ -631,22 +627,18 @@ function compareAirportHtmlAndApiFlights(
 
 function buildAviationStackWindowUrls(apiKey: string, airportIata = DEFAULT_DESTINATION_AIRPORT): string[] {
   const urls: string[] = []
-  const today = new Date()
-  const startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
 
-  for (let offset = 0; offset < AVIATIONSTACK_FORWARD_DAYS; offset += 1) {
-    const cursor = new Date(startDate)
-    cursor.setUTCDate(startDate.getUTCDate() + offset)
-    const flightDate = toIsoDate(cursor)
-
-    for (const key of ['arr_iata', 'dep_iata']) {
-      urls.push(
-        `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(apiKey)}&${key}=${airportIata}&flight_date=${flightDate}`,
-      )
-    }
+  for (const key of ['arr_iata', 'dep_iata']) {
+    urls.push(
+      `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(apiKey)}&${key}=${airportIata}`,
+    )
   }
 
   return urls
+}
+
+function filterFlightsToWindow(flights: ParsedFlight[], days = AVIATIONSTACK_FORWARD_DAYS): ParsedFlight[] {
+  return flights.filter((flight) => withinNextDays(flight.scheduled_arrival, days))
 }
 
 function parseAviationStackPagination(json: unknown): { total: number; count: number; offset: number } | null {
@@ -946,8 +938,9 @@ export async function runPublicDataSync(
       for (const apiUrl of apiUrls) {
         console.info('[public-data-sync] Fetching flight API window', { requestId, apiUrl: redactUrl(apiUrl) })
         const apiResult = await fetchAllAviationStackFlightsForUrl(apiUrl)
-        apiFlights.push(...apiResult)
-        flights = [...flights, ...apiResult]
+        const windowedApiResult = filterFlightsToWindow(apiResult)
+        apiFlights.push(...windowedApiResult)
+        flights = [...flights, ...windowedApiResult]
       }
       if (!process.env.FREE_FLIGHT_API_URL && flights.length === 0) {
         const fallbackUrls = ['arr_iata', 'dep_iata'].map(
@@ -956,12 +949,13 @@ export async function runPublicDataSync(
         )
         for (const apiUrl of fallbackUrls) {
           const apiResult = await fetchAllAviationStackFlightsForUrl(apiUrl)
-          apiFlights.push(...apiResult)
-          flights = [...flights, ...apiResult]
+          const windowedApiResult = filterFlightsToWindow(apiResult)
+          apiFlights.push(...windowedApiResult)
+          flights = [...flights, ...windowedApiResult]
         }
         if (flights.length > 0) {
           warnings.push(
-            'AviationStack date-window queries returned no flights; used non-date fallback endpoints for GIB arrivals/departures.',
+            'AviationStack returned no flights in the next 7-day window; used non-date fallback endpoints for GIB arrivals/departures.',
           )
         }
       }
