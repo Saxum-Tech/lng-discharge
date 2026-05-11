@@ -6,8 +6,8 @@ import { supabase } from '@/lib/supabase'
 import { buildDayEvents, computeDischargeWindows, formatDuration } from '@/lib/shared-utils'
 import type { DayEvent } from '@/lib/types'
 import { useTheme } from '@/contexts/ThemeContext'
-import { addDays, format, parseISO } from 'date-fns'
-import { ArrowLeft, PlaneLanding, PlaneTakeoff, Ship, Clock, TriangleAlert } from 'lucide-react'
+import { addDays, format, parseISO, subDays } from 'date-fns'
+import { ArrowLeft, ArrowRight, PlaneLanding, PlaneTakeoff, Ship, Clock, TriangleAlert } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatTimeInZone } from '@/lib/utils'
 
@@ -24,8 +24,10 @@ export default function DayDetailPage() {
   const fetchData = useCallback(async () => {
     if (!date) return
     setLoading(true)
-    const start = `${date}T00:00:00.000Z`
-    const end = `${date}T23:59:59.999Z`
+    const selectedDay = parseISO(`${date}T00:00:00Z`)
+    const nextDay = addDays(selectedDay, 1)
+    const start = `${format(selectedDay, 'yyyy-MM-dd')}T00:00:00.000Z`
+    const end = `${format(nextDay, 'yyyy-MM-dd')}T23:59:59.999Z`
 
     const [{ data: flightData }, { data: cruiseData }] = await Promise.all([
       supabase
@@ -57,8 +59,13 @@ export default function DayDetailPage() {
 
   const formattedDate = date ? format(parseISO(date), 'EEEE, d MMMM yyyy') : ''
   const selectedDay = date ? parseISO(`${date}T00:00:00Z`) : new Date()
+  const previousDay = subDays(selectedDay, 1)
   const nextDay = addDays(selectedDay, 1)
   const timelineHours = Array.from({ length: 24 }, (_, i) => i)
+
+  const moveDay = (day: Date) => {
+    router.push(`/day/${format(day, 'yyyy-MM-dd')}`)
+  }
 
   const timelineEvents = events.filter((event) => {
     const eventDate = parseISO(event.time)
@@ -78,7 +85,25 @@ export default function DayDetailPage() {
         Back to calendar
       </button>
 
-      <h1 className="mb-8 text-2xl font-bold text-gray-900">{formattedDate}</h1>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-gray-900">{formattedDate}</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => moveDay(previousDay)}
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          >
+            <ArrowLeft size={14} />
+            Previous day
+          </button>
+          <button
+            onClick={() => moveDay(nextDay)}
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          >
+            Next day
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex h-32 items-center justify-center">
