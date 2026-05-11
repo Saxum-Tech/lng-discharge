@@ -180,6 +180,28 @@ export default function CalendarPage() {
     return map
   }, [flights, cruises, ferries, operationalEvents])
 
+  const ferryEventsByDate = useMemo(() => {
+    const map = new Map<string, number>()
+    ferries.forEach((ferry) => {
+      const arrivalDate = ferry.arrival_time.slice(0, 10)
+      map.set(arrivalDate, (map.get(arrivalDate) ?? 0) + 1)
+
+      if (ferry.departure_time) {
+        const departureDate = ferry.departure_time.slice(0, 10)
+        map.set(departureDate, (map.get(departureDate) ?? 0) + 1)
+      }
+    })
+    return map
+  }, [ferries])
+
+  const dischargesByDate = useMemo(() => {
+    const map = new Map<string, number>()
+    plannedDischarges.forEach((discharge) => {
+      map.set(discharge.discharge_date, (map.get(discharge.discharge_date) ?? 0) + 1)
+    })
+    return map
+  }, [plannedDischarges])
+
   const weatherByDate = useMemo(() => {
     const map = new Map<string, MaritimeDailyForecast>()
     weatherForecast.forEach((day) => map.set(day.date, day))
@@ -282,6 +304,8 @@ export default function CalendarPage() {
               const win = windowsByDate.get(day)
               const daySuitability = suitabilityByDate.get(day)
               const eventCount = eventsByDate.get(day) ?? 0
+              const ferryCount = ferryEventsByDate.get(day) ?? 0
+              const dischargeCount = dischargesByDate.get(day) ?? 0
               const isToday = isSameDay(new Date(`${day}T00:00:00Z`), startOfToday())
               const isInCurrentMonth = monthDays.includes(day)
               const weather = weatherByDate.get(day)
@@ -312,6 +336,20 @@ export default function CalendarPage() {
                     </div>
                   )}
                   {eventCount > 0 && <span className="mt-1 block text-[10px] text-gray-500">{eventCount} evt</span>}
+                  {(ferryCount > 0 || dischargeCount > 0) && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {ferryCount > 0 && (
+                        <span className="inline-flex items-center rounded bg-cyan-100 px-1 py-0.5 text-[10px] font-medium text-cyan-900">
+                          ⛴ {ferryCount}
+                        </span>
+                      )}
+                      {dischargeCount > 0 && (
+                        <span className="inline-flex items-center rounded bg-indigo-100 px-1 py-0.5 text-[10px] font-medium text-indigo-900">
+                          LNG {dischargeCount}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </Link>
               )
             })}
