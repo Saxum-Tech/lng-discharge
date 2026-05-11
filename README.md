@@ -97,6 +97,30 @@ Configure these environment variables:
 
 `aviation_api_key` is managed from System Settings and is used for free flight API ingestion when provided. If that setting is blank, the sync falls back to `AVIATIONSTACK_API_KEY`.
 
+## Operational planning additions
+
+- Manual **ferry schedules** and **operational events** are now supported alongside flights and cruises.
+- **Planned LNG discharges** can be created/updated with vessel, date, target alongside time, quantity, status, and notes.
+- Calendar suitability now uses traffic blocking + weather safety scoring (`Green` / `Orange` / `Red`) with day-level reason codes.
+- Event/discharge create/update/delete operations are written to `audit_logs` through database triggers.
+
+### Weather limiting factors used by planning
+
+Planning warnings are evaluated against the operational limits provided by terminal guidance:
+
+- Berthing limits: **Hs > 1.0 m** or **wind > 10 m/s**.
+- Alongside directional limits (wave direction + period bands 5s/8s/10s) are applied for additional stop conditions.
+
+## Go-live runbook checklist
+
+- Configure environment variables in `.env.example` (Supabase + sync auth keys).
+- Confirm `app_settings` singleton row exists and timezone is set correctly.
+- Run all migrations in order (`001`, `002`, `003`) before first production deploy.
+- Verify daily sync execution (`/api/sync/public-data`) and audit log entries for completed/skipped/failed runs.
+- Validate UAT scenarios for owner/admin, terminal user, and barge operator workflows.
+- Confirm backup/restore process for Supabase project and retention policy for `audit_logs`.
+- Set monitoring alerts for sync failures, auth failures, and sustained weather API errors.
+
 ## Project structure
 
 ```text

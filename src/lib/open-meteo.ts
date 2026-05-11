@@ -14,6 +14,11 @@ export type MaritimeDailyForecast = {
   wavePeriodMax: number | null
 }
 
+export const MPS_TO_KNOTS = 1.943844
+export const BERTHING_WAVE_LIMIT_M = 1.0
+export const BERTHING_WIND_LIMIT_MS = 10
+export const BERTHING_WIND_LIMIT_KN = BERTHING_WIND_LIMIT_MS * MPS_TO_KNOTS
+
 type OpenMeteoDailyResponse = {
   daily?: {
     time?: string[]
@@ -48,6 +53,76 @@ export function degreesToArrow(degrees: number | null) {
   const normalized = ((degrees % 360) + 360) % 360
   const index = Math.round(normalized / 45) % 8
   return arrows[index]
+}
+
+function getAlongsideDirectionalLimits(day: MaritimeDailyForecast): {
+  maxWindKn: number
+  maxWaveM: number
+} | null {
+  if (day.waveDirectionDominant == null || day.wavePeriodMax == null) return null
+
+  const direction = ((day.waveDirectionDominant % 360) + 360) % 360
+  const period = day.wavePeriodMax
+  const periodBand = period <= 6 ? 5 : period <= 9 ? 8 : 10
+
+  if (direction >= 180 && direction < 210) {
+    return {
+      maxWindKn: 15 * MPS_TO_KNOTS,
+      maxWaveM: periodBand === 5 ? 1 : periodBand === 8 ? 1 : 1,
+    }
+  }
+  if (direction >= 210 && direction < 240) {
+    return {
+      maxWindKn: 12.5 * MPS_TO_KNOTS,
+      maxWaveM: periodBand === 5 ? 0.9 : periodBand === 8 ? 0.75 : 0.5,
+    }
+  }
+  if (direction >= 240 && direction < 270) {
+    return {
+      maxWindKn: 12.5 * MPS_TO_KNOTS,
+      maxWaveM: periodBand === 5 ? 0.75 : periodBand === 8 ? 0.5 : 0.3,
+    }
+  }
+
+  if ((direction >= 270 && direction <= 360) || (direction >= 0 && direction < 180)) {
+    return {
+      maxWindKn: 10 * MPS_TO_KNOTS,
+      maxWaveM: periodBand === 5 ? 0.5 : periodBand === 8 ? 0.3 : 0.2,
+    }
+  }
+
+  return null
+}
+
+export function getWeatherSafetyStatus(day: MaritimeDailyForecast): {
+  isUnsafe: boolean
+  reasons: string[]
+} {
+  const reasons: string[] = []
+  const wind = day.windSpeedMax ?? 0
+  const wave = day.waveHeightMax ?? 0
+
+  if (wind > BERTHING_WIND_LIMIT_KN) {
+    reasons.push(`Wind exceeds berthing limit (${BERTHING_WIND_LIMIT_MS} m/s)`)
+  }
+  if (wave > BERTHING_WAVE_LIMIT_M) {
+    reasons.push(`Wave exceeds berthing limit (${BERTHING_WAVE_LIMIT_M.toFixed(1)} m)`)
+  }
+
+  const directionalLimits = getAlongsideDirectionalLimits(day)
+  if (directionalLimits) {
+    if (wind > directionalLimits.maxWindKn) {
+      reasons.push('Wind exceeds alongside directional limit')
+    }
+    if (wave > directionalLimits.maxWaveM) {
+      reasons.push('Wave exceeds alongside directional/period limit')
+    }
+  }
+
+  return {
+    isUnsafe: reasons.length > 0,
+    reasons,
+  }
 }
 
 async function fetchOpenMeteo(url: string) {
