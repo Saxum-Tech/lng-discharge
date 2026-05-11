@@ -4,7 +4,6 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { PORTAL_ROLES } from '@/lib/auth-roles'
 import Link from 'next/link'
@@ -39,14 +38,14 @@ function LoginForm() {
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center bg-slate-900 bg-cover bg-center bg-no-repeat px-4"
+      className="flex min-h-screen flex-col items-center justify-center bg-slate-950 bg-cover bg-center bg-no-repeat px-4"
       style={{ backgroundImage: "url('/gibraltar-port.png')" }}
     >
       <div className="w-full max-w-sm">
         <div className="mb-3 flex justify-end">
           <Link
             href="/admin/login"
-            className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-600 bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-gray-200 hover:bg-gray-700"
             title="Admin login"
           >
             <Shield size={14} />
@@ -55,37 +54,43 @@ function LoginForm() {
         </div>
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-white/30 bg-white/20 p-8 shadow-xl backdrop-blur-md"
+          className="space-y-4 rounded-2xl bg-slate-900/35 p-8 shadow-xl backdrop-blur-md"
         >
           <div className="mb-8 flex flex-col items-center gap-3 text-center">
-            <img src={settings?.logo_url ?? '/turner-logo.jpg'} alt="Turner & Co logo" className="h-[70px] w-auto" />
+            <img src={settings?.logo_url ?? '/turner-logo.png'} alt="Turner & Co logo" className="h-[70px] w-auto" />
             <p className="text-sm font-medium text-white/80">Turner &amp; Co (Gibraltar) Ltd</p>
             <h1 className="text-2xl font-bold text-white">{settings?.app_name ?? 'LNG Discharge Planner'}</h1>
             <p className="text-sm text-white/80">Sign in to your account</p>
           </div>
           {error && (
-            <div className="rounded-lg border border-red-300/50 bg-red-500/20 px-4 py-3 text-sm text-red-100">
+            <div className="rounded-lg border border-red-700 bg-red-900/40 px-4 py-3 text-sm text-red-300">
               {error}
             </div>
           )}
-          <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-            placeholder="you@company.com"
-          />
-          <Input
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-            placeholder="••••••••"
-          />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-300">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="you@company.com"
+              className="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-300">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              placeholder="••••••••"
+              className="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
           <div className="-mt-1 text-right">
             <button
               type="button"

@@ -6,9 +6,9 @@ export const metadata: Metadata = {
   title: 'LNG Discharge Planner',
   description: 'LNG Discharge Window Planning Application',
   icons: {
-    icon: '/turner-logo.jpg',
-    shortcut: '/turner-logo.jpg',
-    apple: '/turner-logo.jpg',
+    icon: '/turner-logo.png',
+    shortcut: '/turner-logo.png',
+    apple: '/turner-logo.png',
   },
 }
 

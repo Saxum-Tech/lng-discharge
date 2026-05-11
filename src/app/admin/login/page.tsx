@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { Button } from '@/components/ui/Button'
 import { Suspense } from 'react'
 import { ADMIN_ROLES } from '@/lib/auth-roles'
@@ -11,6 +12,7 @@ import { User } from 'lucide-react'
 
 function AdminLoginForm() {
   const { signIn } = useAuth()
+  const { settings } = useTheme()
   const router = useRouter()
   const searchParams = useSearchParams()
   const unauthorizedError = searchParams.get('error') === 'unauthorized'
@@ -52,13 +54,12 @@ function AdminLoginForm() {
         </div>
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-white/30 bg-slate-900/35 p-8 shadow-xl backdrop-blur-md"
+          className="space-y-4 rounded-2xl bg-slate-900/35 p-8 shadow-xl backdrop-blur-md"
         >
           <div className="mb-8 flex flex-col items-center gap-3 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600 text-white text-xl font-bold shadow">
-              LNG
-            </div>
-            <h1 className="text-2xl font-bold text-white">Admin Console</h1>
+            <img src={settings?.logo_url ?? '/turner-logo.png'} alt="Turner & Co logo" className="h-[70px] w-auto" />
+            <p className="text-sm font-medium text-white/80">Turner &amp; Co (Gibraltar) Ltd</p>
+            <h1 className="text-2xl font-bold text-white">{settings?.app_name ?? 'Admin Console'}</h1>
             <p className="text-sm text-white/80">Super administrator sign in</p>
           </div>
           {error && (
@@ -103,6 +104,10 @@ function AdminLoginForm() {
             Sign in
           </Button>
         </form>
+
+        {settings?.footer_text && (
+          <p className="mt-6 text-center text-xs text-gray-400">{settings.footer_text}</p>
+        )}
       </div>
     </div>
   )

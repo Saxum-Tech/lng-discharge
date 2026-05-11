@@ -30,7 +30,7 @@ export function Navbar() {
       <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo + App name */}
         <Link href="/" className="flex items-center gap-3">
-          <img src={settings?.logo_url ?? '/turner-logo.jpg'} alt="Turner & Co logo" className="h-[70px] w-auto" />
+          <img src={settings?.logo_url ?? '/turner-logo.png'} alt="Turner & Co logo" className="h-[70px] w-auto" />
           <div className="hidden sm:block">
             <p className="text-xs font-medium text-gray-500">Turner &amp; Co (Gibraltar) Ltd</p>
             <span className="text-lg font-semibold text-gray-900">
