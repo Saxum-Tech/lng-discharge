@@ -237,6 +237,7 @@ export default function DayDetailPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{event.title}</p>
                       <p className="text-xs text-gray-400">{formatTimeInZone(event.time)}</p>
+                      <p className="text-xs text-gray-500">Source: {event.data_source ?? 'unknown'}</p>
                       {event.type === 'flight' && event.delay_minutes && event.delay_minutes > 0 && (
                         <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-red-600">
                           <TriangleAlert size={12} /> Delayed by {event.delay_minutes} min

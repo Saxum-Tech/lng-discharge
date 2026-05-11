@@ -33,6 +33,7 @@ export function buildUnifiedDayEvents(
         cruise_direction: 'arrival',
         is_private: c.is_private,
         company_id: c.company_id,
+        data_source: c.data_source,
       },
     ]
 
@@ -48,6 +49,7 @@ export function buildUnifiedDayEvents(
         cruise_direction: 'departure',
         is_private: c.is_private,
         company_id: c.company_id,
+        data_source: c.data_source,
       },
     ]
   })
@@ -62,6 +64,7 @@ export function buildUnifiedDayEvents(
         is_private: f.is_private,
         company_id: f.company_id,
         notes: f.notes,
+        data_source: f.data_source,
         blocks_discharge: true,
       },
     ]
@@ -78,6 +81,7 @@ export function buildUnifiedDayEvents(
         is_private: f.is_private,
         company_id: f.company_id,
         notes: f.notes,
+        data_source: f.data_source,
         blocks_discharge: true,
       },
     ]
@@ -92,6 +96,7 @@ export function buildUnifiedDayEvents(
     is_private: event.is_private,
     company_id: event.company_id,
     notes: event.notes,
+    data_source: event.data_source,
     blocks_discharge: event.blocks_discharge,
   }))
 
@@ -115,6 +120,7 @@ export function buildUnifiedDayEvents(
           is_private: f.is_private,
           company_id: f.company_id,
           notes: f.notes,
+          data_source: f.data_source,
           blocks_discharge: true,
           delay_minutes: (() => {
             const m = f.notes?.match(/DELAYED\s+(\d+)\s+min/i)

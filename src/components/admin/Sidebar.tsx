@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { Settings, Building2, Users, ScrollText, LogOut, Sliders, Monitor } from 'lucide-react'
+import { Settings, Building2, Users, ScrollText, LogOut, Sliders, Monitor, CalendarDays } from 'lucide-react'
 
 const navItems = [
   { href: '/admin/companies', label: 'Companies', icon: Building2 },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/settings/branding', label: 'Branding', icon: Settings },
   { href: '/admin/settings/system', label: 'System', icon: Sliders },
+  { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/admin/audit', label: 'Audit Log', icon: ScrollText },
 ]
 
