@@ -27,8 +27,8 @@ export function Sidebar() {
     <aside className="flex h-full w-60 flex-col border-r border-gray-200 bg-gray-900 text-white">
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-gray-700 px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-500 text-white text-xs font-bold">
-          LNG
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white p-1">
+          <img src="/turner-logo.png" alt="Turner & Co logo" className="h-full w-full object-contain" />
         </div>
         <span className="text-sm font-semibold">Admin Console</span>
       </div>
