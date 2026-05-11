@@ -38,7 +38,10 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
+    <div
+      className="flex min-h-screen flex-col items-center justify-center bg-slate-900 bg-cover bg-center bg-no-repeat px-4"
+      style={{ backgroundImage: "url('/gibraltar-port.png')" }}
+    >
       <div className="w-full max-w-sm">
         <div className="mb-3 flex justify-end">
           <Link
@@ -50,22 +53,18 @@ function LoginForm() {
             Admin
           </Link>
         </div>
-        {/* Logo */}
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <img src={settings?.logo_url ?? '/turner-logo.jpg'} alt="Turner & Co logo" className="h-[70px] w-auto" />
-          <p className="text-sm font-medium text-gray-500">Turner &amp; Co (Gibraltar) Ltd</p>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {settings?.app_name ?? 'LNG Discharge Planner'}
-          </h1>
-          <p className="text-sm text-gray-500">Sign in to your account</p>
-        </div>
-
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-xl border border-gray-200 bg-white p-8 shadow-sm"
+          className="space-y-4 rounded-2xl border border-white/30 bg-white/20 p-8 shadow-xl backdrop-blur-md"
         >
+          <div className="mb-8 flex flex-col items-center gap-3 text-center">
+            <img src={settings?.logo_url ?? '/turner-logo.jpg'} alt="Turner & Co logo" className="h-[70px] w-auto" />
+            <p className="text-sm font-medium text-white/80">Turner &amp; Co (Gibraltar) Ltd</p>
+            <h1 className="text-2xl font-bold text-white">{settings?.app_name ?? 'LNG Discharge Planner'}</h1>
+            <p className="text-sm text-white/80">Sign in to your account</p>
+          </div>
           {error && (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-200">
+            <div className="rounded-lg border border-red-300/50 bg-red-500/20 px-4 py-3 text-sm text-red-100">
               {error}
             </div>
           )}
@@ -87,6 +86,15 @@ function LoginForm() {
             autoComplete="current-password"
             placeholder="••••••••"
           />
+          <div className="-mt-1 text-right">
+            <button
+              type="button"
+              onClick={() => setError('Please contact your administrator to reset your password.')}
+              className="text-xs font-medium text-white/85 underline-offset-2 hover:text-white hover:underline"
+            >
+              Forgot password?
+            </button>
+          </div>
           <Button type="submit" loading={loading} className="w-full" size="lg">
             Sign in
           </Button>
