@@ -7,6 +7,8 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { PORTAL_ROLES } from '@/lib/auth-roles'
+import Link from 'next/link'
+import { Shield } from 'lucide-react'
 
 function LoginForm() {
   const { signIn } = useAuth()
@@ -38,6 +40,16 @@ function LoginForm() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
+        <div className="mb-3 flex justify-end">
+          <Link
+            href="/admin/login"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            title="Admin login"
+          >
+            <Shield size={14} />
+            Admin
+          </Link>
+        </div>
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
           {settings?.logo_url ? (

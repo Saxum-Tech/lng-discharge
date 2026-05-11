@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Suspense } from 'react'
 import { ADMIN_ROLES } from '@/lib/auth-roles'
+import Link from 'next/link'
+import { User } from 'lucide-react'
 
 function AdminLoginForm() {
   const { signIn } = useAuth()
@@ -35,6 +37,16 @@ function AdminLoginForm() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 px-4">
       <div className="w-full max-w-sm">
+        <div className="mb-3 flex justify-end">
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-600 bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-gray-200 hover:bg-gray-700"
+            title="User login"
+          >
+            <User size={14} />
+            User login
+          </Link>
+        </div>
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600 text-white text-xl font-bold shadow">
             LNG
