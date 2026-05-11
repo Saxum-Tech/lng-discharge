@@ -369,7 +369,7 @@ function parseLegacyFlightsFromRows(rows: string[][]): ParsedFlight[] {
       scheduled_departure: null,
       aircraft_type: null,
       passenger_count: null,
-      delay_minutes: delayMinutes && delayMinutes > 0 ? delayMinutes : null,
+      delay_minutes: null,
     })
   }
 
@@ -738,10 +738,7 @@ async function syncFlights(
       ...flight,
       company_id: owner.companyId,
       created_by: owner.userId,
-      notes:
-        flight.delay_minutes && flight.delay_minutes > 0
-          ? `Synced from public source | DELAYED ${flight.delay_minutes} min`
-          : 'Synced from public source',
+      notes: 'Synced from public source',
       is_private: false,
     }
 
@@ -792,7 +789,7 @@ async function syncCruises(
   for (const cruise of cruises) {
     const { data: existing, error: lookupError } = await admin
       .from('cruise_schedules')
-      .select('id, departure_date, vessel_type, passenger_count')
+      .select('id, departure_date, vessel_type, passenger_count, notes')
       .eq('company_id', owner.companyId)
       .eq('vessel_name', cruise.vessel_name)
       .eq('arrival_date', cruise.arrival_date)
@@ -804,10 +801,7 @@ async function syncCruises(
       ...cruise,
       company_id: owner.companyId,
       created_by: owner.userId,
-      notes:
-        flight.delay_minutes && flight.delay_minutes > 0
-          ? `Synced from public source | DELAYED ${flight.delay_minutes} min`
-          : 'Synced from public source',
+      notes: 'Synced from public source',
       is_private: false,
     }
 
