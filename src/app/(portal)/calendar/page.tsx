@@ -47,6 +47,13 @@ type CalendarView = 'month' | 'week' | '2day'
 
 const DISCHARGE_STATUSES: PlannedDischargeStatus[] = ['planned', 'confirmed', 'in_progress', 'completed', 'cancelled']
 
+function formatDischargeStatus(status: PlannedDischargeStatus): string {
+  return status
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 export default function CalendarPage() {
   const { settings } = useTheme()
   const { profile, user } = useAuth()
@@ -361,7 +368,9 @@ export default function CalendarPage() {
                     <td className="py-3 pr-4 text-gray-900">{row.vessel_name}</td>
                     <td className="py-3 pr-4 text-gray-900">{row.approx_quantity_m3.toLocaleString('en-GB')}</td>
                     <td className="py-3 pr-4">
-                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{row.status.replaceAll('_', ' ')}</span>
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                        {formatDischargeStatus(row.status)}
+                      </span>
                     </td>
                     <td className="py-3 pr-4 text-xs text-gray-500">
                       <div>Added {formatAuditDateTime(row.created_at)}</div>
@@ -421,6 +430,7 @@ function DischargeModal({
   const [notes, setNotes] = useState(editItem?.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const quantityPattern = /^\d*\.?\d*$/
 
   const canSave = Boolean(companyId && userId && vessel.trim().length > 0 && quantity.trim().length > 0)
 
@@ -518,7 +528,13 @@ function DischargeModal({
                 step="0.01"
                 min="0"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                inputMode="decimal"
+                onChange={(e) => {
+                  const nextValue = e.target.value
+                  if (nextValue === '' || quantityPattern.test(nextValue)) {
+                    setQuantity(nextValue)
+                  }
+                }}
                 required
                 className="rounded-lg border border-gray-300 px-3 py-2"
               />
@@ -532,7 +548,7 @@ function DischargeModal({
               >
                 {DISCHARGE_STATUSES.map((s) => (
                   <option key={s} value={s}>
-                    {s.replaceAll('_', ' ')}
+                    {formatDischargeStatus(s)}
                   </option>
                 ))}
               </select>
