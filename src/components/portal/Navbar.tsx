@@ -64,6 +64,15 @@ export function Navbar() {
 
         {/* User menu */}
         <div className="flex items-center gap-2">
+          {profile?.role === 'superadmin' && (
+            <Link
+              href="/admin/companies"
+              className="hidden items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 md:flex"
+            >
+              <Shield size={16} />
+              Backoffice
+            </Link>
+          )}
           <Link
             href="/profile"
             className="hidden items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 md:flex"
@@ -119,16 +128,6 @@ export function Navbar() {
               Backoffice
             </Link>
           )}
-          {profile?.role === 'superadmin' && (
-            <Link
-              href="/admin/companies"
-              className="hidden items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 md:flex"
-            >
-              <Shield size={16} />
-              Backoffice
-            </Link>
-          )}
-
           <Link
             href="/profile"
             onClick={() => setMenuOpen(false)}
