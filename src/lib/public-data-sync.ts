@@ -102,6 +102,38 @@ function normalizeYear(yearRaw: string): string {
   return String(fullYear)
 }
 
+function getTimezoneOffsetMinutes(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    timeZoneName: 'shortOffset',
+    hour: '2-digit',
+  }).formatToParts(date)
+  const tzName = parts.find((part) => part.type === 'timeZoneName')?.value
+  const match = tzName?.match(/^GMT([+-])(\d{1,2})(?::?(\d{2}))?$/i)
+  if (!match) return 0
+
+  const sign = match[1] === '-' ? -1 : 1
+  const hours = Number.parseInt(match[2], 10)
+  const minutes = Number.parseInt(match[3] ?? '0', 10)
+  return sign * (hours * 60 + minutes)
+}
+
+function parseGibraltarLocalToIso(datePart: string, hourPart = '00', minutePart = '00'): string | null {
+  const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+
+  const year = Number.parseInt(match[1], 10)
+  const monthIndex = Number.parseInt(match[2], 10) - 1
+  const day = Number.parseInt(match[3], 10)
+  const hour = Number.parseInt(hourPart, 10)
+  const minute = Number.parseInt(minutePart, 10)
+  const utcGuess = Date.UTC(year, monthIndex, day, hour, minute, 0)
+  const offsetMinutes = getTimezoneOffsetMinutes(new Date(utcGuess), 'Europe/Gibraltar')
+  const utcTimestamp = utcGuess - offsetMinutes * 60_000
+  const parsed = new Date(utcTimestamp)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+}
+
 function normalizeDate(value: string, contextDate?: string): string | null {
   const trimmed = value.trim()
   if (!trimmed) return null
@@ -119,8 +151,8 @@ function normalizeDate(value: string, contextDate?: string): string | null {
     const year = normalizeYear(dayFirst[3])
     const hour = (dayFirst[4] ?? '00').padStart(2, '0')
     const minute = dayFirst[5] ?? '00'
-    const parsed = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`)
-    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+    const parsed = parseGibraltarLocalToIso(`${year}-${month}-${day}`, hour, minute)
+    if (parsed) return parsed
   }
 
   const monthName = trimmed.match(
@@ -133,8 +165,8 @@ function normalizeDate(value: string, contextDate?: string): string | null {
       const year = normalizeYear(monthName[3])
       const hour = (monthName[4] ?? '00').padStart(2, '0')
       const minute = monthName[5] ?? '00'
-      const parsed = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`)
-      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+      const parsed = parseGibraltarLocalToIso(`${year}-${month}-${day}`, hour, minute)
+      if (parsed) return parsed
     }
   }
 
@@ -142,8 +174,8 @@ function normalizeDate(value: string, contextDate?: string): string | null {
   if (timeOnly && contextDate) {
     const hour = timeOnly[1].padStart(2, '0')
     const minute = timeOnly[2]
-    const parsed = new Date(`${contextDate}T${hour}:${minute}:00Z`)
-    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+    const parsed = parseGibraltarLocalToIso(contextDate, hour, minute)
+    if (parsed) return parsed
   }
 
   return null
