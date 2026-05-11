@@ -33,7 +33,7 @@ export default function BrandingPage() {
 
   // Form state
   const [appName, setAppName] = useState('')
-  const [primaryColor, setPrimaryColor] = useState('#0f4c81')
+  const [primaryColor, setPrimaryColor] = useState('#0A4381')
   const [accentColor, setAccentColor] = useState('#00a8e8')
   const [footerText, setFooterText] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
@@ -50,7 +50,7 @@ export default function BrandingPage() {
       .maybeSingle()
     if (data) {
       setAppName(data.app_name ?? '')
-      setPrimaryColor(data.primary_color ?? '#0f4c81')
+      setPrimaryColor(data.primary_color ?? '#0A4381')
       setAccentColor(data.accent_color ?? '#00a8e8')
       setFooterText(data.footer_text ?? '')
       setLogoUrl(data.logo_url ?? '')
