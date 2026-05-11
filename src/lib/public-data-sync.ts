@@ -579,7 +579,7 @@ async function fetchJson(url: string): Promise<unknown> {
   return response.json()
 }
 
-const AVIATIONSTACK_FORWARD_DAYS = 7
+const AVIATIONSTACK_FORWARD_DAYS = 30
 
 function withinNextDays(timestamp: string, days: number): boolean {
   const time = new Date(timestamp).getTime()
@@ -955,7 +955,7 @@ export async function runPublicDataSync(
         }
         if (flights.length > 0) {
           warnings.push(
-            'AviationStack returned no flights in the next 7-day window; used non-date fallback endpoints for GIB arrivals/departures.',
+            `AviationStack returned no flights in the next ${AVIATIONSTACK_FORWARD_DAYS}-day window; used non-date fallback endpoints for GIB arrivals/departures.`,
           )
         }
       }
