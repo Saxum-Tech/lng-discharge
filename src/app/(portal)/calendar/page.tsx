@@ -142,6 +142,7 @@ export default function CalendarPage() {
       <div className="mb-4 flex flex-wrap gap-4 text-xs text-gray-500">
         <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-[var(--color-accent)]" /> Discharge window starts</span>
         <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-blue-200" /> Continues into next day</span>
+        <span>All times shown are in local time (LT).</span>
       </div>
 
       {loading ? (
@@ -162,7 +163,7 @@ export default function CalendarPage() {
               return (
                 <Link key={day} href={`/day/${day}`} className={`group relative min-h-[110px] border-b border-r border-gray-100 p-2 transition-colors hover:bg-blue-50 ${win ? 'bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.1)]' : continuesFromPrevious ? 'bg-blue-50' : ''}`}>
                   <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : 'text-gray-700'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
-                  {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-xs font-medium text-[var(--color-primary)]">Starts {format(new Date(win.start_time), 'HH:mm')} → {format(new Date(win.end_time), 'HH:mm')} ({formatDuration(win.duration_hours)})</span>}
+                  {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-xs font-medium text-[var(--color-primary)]">Starts {format(new Date(win.start_time), 'HH:mm')} → {format(new Date(win.end_time), 'HH:mm')} LT ({formatDuration(win.duration_hours)})</span>}
                   {continuesFromPrevious && <span className="mt-1 block rounded bg-blue-100 px-1 py-0.5 text-xs font-medium text-blue-800">Window completes this morning</span>}
                   {eventCount > 0 && <span className="mt-1 block text-xs text-gray-400">{eventCount} event{eventCount > 1 ? 's' : ''}</span>}
                 </Link>
@@ -176,7 +177,7 @@ export default function CalendarPage() {
         <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
           <p className="font-medium">Overnight windows touching this day: {dayWindows.length}</p>
           {dayWindows.map((w) => (
-            <p key={`${w.start_time}-${w.end_time}`}>• {format(new Date(w.start_time), 'dd MMM HH:mm')} to {format(new Date(w.end_time), 'dd MMM HH:mm')} ({formatDuration(w.duration_hours)})</p>
+            <p key={`${w.start_time}-${w.end_time}`}>• {format(new Date(w.start_time), 'dd MMM HH:mm')} to {format(new Date(w.end_time), 'dd MMM HH:mm')} LT ({formatDuration(w.duration_hours)})</p>
           ))}
         </div>
       )}
