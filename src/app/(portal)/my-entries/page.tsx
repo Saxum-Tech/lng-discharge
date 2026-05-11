@@ -437,6 +437,7 @@ function EntryModal({
           scheduled_departure: departure ? `${departure}:00Z` : null,
           is_private: isPrivate,
           notes: notes || null,
+          data_source: 'manual_ui',
         }
 
         const { error } = editItem
@@ -453,6 +454,7 @@ function EntryModal({
           departure_date: cruiseDeparture ? `${cruiseDeparture}:00Z` : null,
           is_private: isPrivate,
           notes: notes || null,
+          data_source: 'manual_ui',
         }
 
         const { error } = editItem
@@ -469,6 +471,7 @@ function EntryModal({
           departure_time: ferryDeparture ? `${ferryDeparture}:00Z` : null,
           is_private: isPrivate,
           notes: notes || null,
+          data_source: 'manual_ui',
         }
 
         const { error } = editItem
@@ -486,6 +489,7 @@ function EntryModal({
           blocks_discharge: blocksDischarge,
           is_private: isPrivate,
           notes: notes || null,
+          data_source: 'manual_ui',
         }
 
         const { error } = editItem

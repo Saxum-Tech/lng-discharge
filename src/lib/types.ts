@@ -57,6 +57,7 @@ export interface Flight {
   passenger_count: number | null
   is_private: boolean
   notes: string | null
+  data_source: string
   created_by: string
   created_at: string
   updated_at: string
@@ -72,6 +73,7 @@ export interface CruiseSchedule {
   passenger_count: number | null
   is_private: boolean
   notes: string | null
+  data_source: string
   created_by: string
   created_at: string
   updated_at: string
@@ -86,6 +88,7 @@ export interface FerrySchedule {
   departure_time: string | null
   is_private: boolean
   notes: string | null
+  data_source: string
   created_by: string
   created_at: string
   updated_at: string
@@ -103,6 +106,7 @@ export interface OperationalEvent {
   blocks_discharge: boolean
   is_private: boolean
   notes: string | null
+  data_source: string
   created_by: string
   created_at: string
   updated_at: string
@@ -167,6 +171,7 @@ export interface DayEvent {
   is_private: boolean
   company_id: string
   notes?: string | null
+  data_source?: string
   delay_minutes?: number | null
   blocks_discharge?: boolean
 }

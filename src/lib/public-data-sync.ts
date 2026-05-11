@@ -760,6 +760,7 @@ async function syncFlights(
       company_id: owner.companyId,
       created_by: owner.userId,
       notes: 'Synced from public source',
+      data_source: 'public_sync',
       is_private: false,
     }
 
@@ -789,6 +790,7 @@ async function syncFlights(
         aircraft_type: row.aircraft_type,
         passenger_count: row.passenger_count,
         notes: row.notes,
+        data_source: row.data_source,
       })
       .eq('id', existingRow.id)
     if (updateError) throw updateError
@@ -847,6 +849,7 @@ async function syncCruises(
       company_id: owner.companyId,
       created_by: owner.userId,
       notes: 'Synced from public source',
+      data_source: 'public_sync',
       is_private: false,
     }
 
@@ -876,6 +879,7 @@ async function syncCruises(
         vessel_type: row.vessel_type,
         passenger_count: row.passenger_count,
         notes: row.notes,
+        data_source: row.data_source,
       })
       .eq('id', existingRow.id)
     if (updateError) throw updateError
