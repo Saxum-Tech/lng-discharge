@@ -52,7 +52,7 @@ function LoginForm() {
         </div>
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <img src={settings?.logo_url ?? '/turner-logo.jpg'} alt="Turner & Co logo" className="h-14 w-auto" />
+          <img src={settings?.logo_url ?? '/turner-logo.jpg'} alt="Turner & Co logo" className="h-[70px] w-auto" />
           <p className="text-sm font-medium text-gray-500">Turner &amp; Co (Gibraltar) Ltd</p>
           <h1 className="text-2xl font-bold text-gray-900">
             {settings?.app_name ?? 'LNG Discharge Planner'}
