@@ -10,6 +10,7 @@ import { addDays, format, parseISO, subDays } from 'date-fns'
 import { ArrowLeft, ArrowRight, PlaneLanding, PlaneTakeoff, Ship, Clock, TriangleAlert } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatTimeInZone } from '@/lib/utils'
+import { MaritimeWeatherWidget } from '@/components/portal/MaritimeWeatherWidget'
 
 export default function DayDetailPage() {
   const params = useParams()
@@ -104,6 +105,8 @@ export default function DayDetailPage() {
           </button>
         </div>
       </div>
+
+      <MaritimeWeatherWidget selectedDate={date} />
 
       {loading ? (
         <div className="flex h-32 items-center justify-center">
