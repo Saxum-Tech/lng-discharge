@@ -14,6 +14,7 @@ import {
 import type { Flight, CruiseSchedule, DischargeWindow } from '@/lib/types'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { MaritimeWeatherWidget } from '@/components/portal/MaritimeWeatherWidget'
+import { degreesToArrow, fetchMaritimeForecast, getWeatherPresentation, type MaritimeDailyForecast } from '@/lib/open-meteo'
 import {
   addDays,
   addMonths,
@@ -37,6 +38,7 @@ export default function CalendarPage() {
   const [windows, setWindows] = useState<DischargeWindow[]>([])
   const [loading, setLoading] = useState(true)
   const [missingFlightDates, setMissingFlightDates] = useState<string[]>([])
+  const [weatherForecast, setWeatherForecast] = useState<MaritimeDailyForecast[]>([])
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
@@ -47,7 +49,7 @@ export default function CalendarPage() {
     const start = new Date(Date.UTC(year, month - 1, 1)).toISOString()
     const end = new Date(Date.UTC(year, month, 1)).toISOString()
 
-    const [{ data: flightData }, { data: cruiseData }] = await Promise.all([
+    const [{ data: flightData }, { data: cruiseData }, weatherData] = await Promise.all([
       supabase
         .from('flights')
         .select('*')
@@ -58,6 +60,7 @@ export default function CalendarPage() {
         .select('*')
         .or(`and(arrival_date.gte.${start},arrival_date.lt.${end}),and(departure_date.gte.${start},departure_date.lt.${end})`)
         .order('arrival_date'),
+      fetchMaritimeForecast(14),
     ])
 
     const f = flightData ?? []
@@ -68,6 +71,7 @@ export default function CalendarPage() {
     const events = buildDayEvents(f, c)
     setWindows(computeDischargeWindows(events, year, month, minHours))
     setMissingFlightDates(getMissingFlightDates(f, year, month))
+    setWeatherForecast(weatherData)
     setLoading(false)
   }, [year, month, minHours])
 
@@ -97,6 +101,12 @@ export default function CalendarPage() {
     })
     return map
   }, [flights, cruises])
+
+  const weatherByDate = useMemo(() => {
+    const map = new Map<string, MaritimeDailyForecast>()
+    weatherForecast.forEach((day) => map.set(day.date, day))
+    return map
+  }, [weatherForecast])
 
   const monthDays = getDaysInMonth(year, month)
   const weekDays = Array.from({ length: 7 }).map((_, i) =>
@@ -162,11 +172,20 @@ export default function CalendarPage() {
               const continuesFromPrevious = windows.some((w) => w.end_time.slice(0, 10) === day && w.date !== day)
               const eventCount = eventsByDate.get(day) ?? 0
               const isToday = isSameDay(new Date(`${day}T00:00:00Z`), startOfDay(new Date()))
+              const weather = weatherByDate.get(day)
+              const weatherInfo = weather ? getWeatherPresentation(weather.weatherCode) : null
               return (
                 <Link key={day} href={`/day/${day}`} className={`group relative min-h-[110px] border-b border-r border-gray-100 p-2 transition-colors hover:bg-blue-50 ${win ? 'bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.1)]' : continuesFromPrevious ? 'bg-blue-50' : ''}`}>
                   <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : 'text-gray-700'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
                   {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-xs font-medium text-[var(--color-primary)]">Starts {format(new Date(win.start_time), 'HH:mm')} → {format(new Date(win.end_time), 'HH:mm')} LT ({formatDuration(win.duration_hours)})</span>}
                   {continuesFromPrevious && <span className="mt-1 block rounded bg-blue-100 px-1 py-0.5 text-xs font-medium text-blue-800">Window completes this morning</span>}
+                  {weatherInfo && weather && (
+                    <div className={`mt-1 rounded px-1 py-0.5 text-xs ${weatherInfo.isAdverse ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-700'}`}>
+                      <div className="inline-flex items-center gap-1">{weatherInfo.icon} {weatherInfo.label}</div>
+                      <div>Wind {degreesToArrow(weather.windDirectionDominant)} {weather.windSpeedMax?.toFixed(0) ?? '—'} kn</div>
+                      <div>Wave {degreesToArrow(weather.waveDirectionDominant)} {weather.waveHeightMax?.toFixed(1) ?? '—'} m / {weather.wavePeriodMax?.toFixed(1) ?? '—'} s</div>
+                    </div>
+                  )}
                   {eventCount > 0 && <span className="mt-1 block text-xs text-gray-400">{eventCount} event{eventCount > 1 ? 's' : ''}</span>}
                 </Link>
               )

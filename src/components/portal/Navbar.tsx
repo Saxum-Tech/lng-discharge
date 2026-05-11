@@ -27,7 +27,7 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
-      <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo + App name */}
         <Link href="/" className="flex items-center gap-3">
           <img src={settings?.logo_url ?? '/turner-logo.png'} alt="Turner & Co logo" className="h-[70px] w-auto" />
