@@ -14,7 +14,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 const DEFAULT_SETTINGS = {
-  primary_color: '#0f4c81',
+  primary_color: '#0A4381',
   accent_color: '#00a8e8',
 }
 

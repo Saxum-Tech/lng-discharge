@@ -10,7 +10,7 @@ create table if not exists public.app_settings (
   app_name                    text not null default 'LNG Discharge Planner',
   logo_url                    text,
   favicon_url                 text,
-  primary_color               text not null default '#0f4c81',
+  primary_color               text not null default '#0A4381',
   accent_color                text not null default '#00a8e8',
   min_discharge_window_hours  numeric(5,2) not null default 4,
   footer_text                 text,
