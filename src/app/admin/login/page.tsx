@@ -35,7 +35,10 @@ function AdminLoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 px-4">
+    <div
+      className="flex min-h-screen flex-col items-center justify-center bg-slate-950 bg-cover bg-center bg-no-repeat px-4"
+      style={{ backgroundImage: "url('/gibraltar-port.png')" }}
+    >
       <div className="w-full max-w-sm">
         <div className="mb-3 flex justify-end">
           <Link
@@ -47,18 +50,17 @@ function AdminLoginForm() {
             User login
           </Link>
         </div>
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600 text-white text-xl font-bold shadow">
-            LNG
-          </div>
-          <h1 className="text-2xl font-bold text-white">Admin Console</h1>
-          <p className="text-sm text-gray-400">Super administrator sign in</p>
-        </div>
-
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-xl border border-gray-700 bg-gray-800 p-8 shadow-sm"
+          className="space-y-4 rounded-2xl border border-white/30 bg-slate-900/35 p-8 shadow-xl backdrop-blur-md"
         >
+          <div className="mb-8 flex flex-col items-center gap-3 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600 text-white text-xl font-bold shadow">
+              LNG
+            </div>
+            <h1 className="text-2xl font-bold text-white">Admin Console</h1>
+            <p className="text-sm text-white/80">Super administrator sign in</p>
+          </div>
           {error && (
             <div className="rounded-lg bg-red-900/40 px-4 py-3 text-sm text-red-300 border border-red-700">
               {error}
@@ -87,6 +89,15 @@ function AdminLoginForm() {
               placeholder="••••••••"
               className="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
+          </div>
+          <div className="-mt-1 text-right">
+            <button
+              type="button"
+              onClick={() => setError('Please contact your system owner to reset your admin password.')}
+              className="text-xs font-medium text-white/85 underline-offset-2 hover:text-white hover:underline"
+            >
+              Forgot password?
+            </button>
           </div>
           <Button type="submit" loading={loading} className="w-full" size="lg">
             Sign in
