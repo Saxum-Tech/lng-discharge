@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { Settings, Building2, Users, ScrollText, LogOut, Sliders } from 'lucide-react'
+import { Settings, Building2, Users, ScrollText, LogOut, Sliders, Monitor } from 'lucide-react'
 
 const navItems = [
   { href: '/admin/companies', label: 'Companies', icon: Building2 },
@@ -56,6 +56,17 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
+
+
+      <div className="px-3 pb-2">
+        <Link
+          href="/calendar"
+          className="flex items-center gap-3 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-3 py-2.5 text-sm font-medium text-indigo-100 transition-colors hover:bg-indigo-500/20"
+        >
+          <Monitor size={16} />
+          Go to Frontend
+        </Link>
+      </div>
 
       {/* Sign out */}
       <div className="border-t border-gray-700 p-3">

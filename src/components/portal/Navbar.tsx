@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { LogOut, User, Menu, X } from 'lucide-react'
+import { LogOut, User, Menu, X, Shield } from 'lucide-react'
 import { useState } from 'react'
 
 const navLinks = [
@@ -110,6 +110,25 @@ export function Navbar() {
             )
           })}
           <hr className="my-2" />
+          {profile?.role === 'superadmin' && (
+            <Link
+              href="/admin/companies"
+              onClick={() => setMenuOpen(false)}
+              className="block rounded-lg px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+            >
+              Backoffice
+            </Link>
+          )}
+          {profile?.role === 'superadmin' && (
+            <Link
+              href="/admin/companies"
+              className="hidden items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 md:flex"
+            >
+              <Shield size={16} />
+              Backoffice
+            </Link>
+          )}
+
           <Link
             href="/profile"
             onClick={() => setMenuOpen(false)}
