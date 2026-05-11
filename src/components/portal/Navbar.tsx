@@ -30,16 +30,13 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo + App name */}
         <Link href="/" className="flex items-center gap-3">
-          {settings?.logo_url ? (
-            <img src={settings.logo_url} alt="Logo" className="h-8 w-auto" />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--color-primary)] text-white text-sm font-bold">
-              LNG
-            </div>
-          )}
-          <span className="hidden text-lg font-semibold text-gray-900 sm:block">
-            {settings?.app_name ?? 'LNG Discharge Planner'}
-          </span>
+          <img src={settings?.logo_url ?? '/turner-logo.jpg'} alt="Turner & Co logo" className="h-8 w-auto" />
+          <div className="hidden sm:block">
+            <p className="text-xs font-medium text-gray-500">Turner &amp; Co (Gibraltar) Ltd</p>
+            <span className="text-lg font-semibold text-gray-900">
+              {settings?.app_name ?? 'LNG Discharge Planner'}
+            </span>
+          </div>
         </Link>
 
         {/* Desktop nav */}
