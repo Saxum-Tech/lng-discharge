@@ -634,6 +634,7 @@ function compareAirportHtmlAndApiFlights(
   const missingInHtml = apiWindow.filter((flight) => !htmlKeys.has(flightKey(flight)))
 
   const warnings: string[] = []
+  const requestId = options?.requestId ?? 'n/a'
   if (missingInApi.length > 0) {
     warnings.push(
       `Website/API mismatch (next ${days} days): ${missingInApi.length} flights found on Gibraltar website but not in API results.`,
@@ -930,9 +931,10 @@ async function syncCruises(
 
 export async function runPublicDataSync(
   admin: SupabaseClient,
-  options?: { includeApiFlights?: boolean },
+  options?: { includeApiFlights?: boolean; requestId?: string },
 ): Promise<PublicDataSyncSummary> {
   const warnings: string[] = []
+  const requestId = options?.requestId ?? 'n/a'
   const cruiseUrl =
     process.env.GIBRALTAR_CRUISE_SCHEDULE_URL ||
     'https://www.gibraltarport.com/cruise/schedules'
@@ -940,6 +942,7 @@ export async function runPublicDataSync(
     process.env.GIBRALTAR_AIRPORT_FLIGHTS_URL ||
     'https://www.gibraltarairport.gi/airlines-and-destinations/live-flight-information'
 
+  console.info('[public-data-sync] Fetching upstream schedules', { requestId, cruiseUrl: redactUrl(cruiseUrl), airportUrl: redactUrl(airportUrl) })
   const [cruiseHtml, airportHtml] = await Promise.all([fetchText(cruiseUrl), fetchText(airportUrl)])
   const websiteFlights = parseFlightsFromHtml(airportHtml)
   let flights = [...websiteFlights]
@@ -961,6 +964,7 @@ export async function runPublicDataSync(
       : buildAviationStackWindowUrls(aviationApiKey)
     try {
       for (const apiUrl of apiUrls) {
+        console.info('[public-data-sync] Fetching flight API window', { requestId, apiUrl: redactUrl(apiUrl) })
         const apiResult = await fetchAllAviationStackFlightsForUrl(apiUrl)
         apiFlights.push(...apiResult)
         flights = [...flights, ...apiResult]
@@ -983,7 +987,9 @@ export async function runPublicDataSync(
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Flight API sync failed.'
-      warnings.push(redactSensitiveText(message))
+      const redactedMessage = redactSensitiveText(message)
+      warnings.push(redactedMessage)
+      console.warn('[public-data-sync] Flight API fetch failed', { requestId, message: redactedMessage })
     }
   } else if (options?.includeApiFlights !== false) {
     warnings.push(
@@ -1013,9 +1019,30 @@ export async function runPublicDataSync(
     warnings.push('No cruise schedules parsed from sources.')
   }
 
+  console.info('[public-data-sync] Parsed schedule records', {
+    requestId,
+    websiteFlights: websiteFlights.length,
+    apiFlights: apiFlights.length,
+    dedupedFlights: dedupedFlights.length,
+    dedupedCruises: dedupedCruises.length,
+    warningCount: warnings.length,
+  })
+
   const owner = await resolveSyncOwner(admin)
   const flightResults = await syncFlights(admin, owner, dedupedFlights)
   const cruiseResults = await syncCruises(admin, owner, dedupedCruises)
+
+  console.info('[public-data-sync] Database sync results', {
+    requestId,
+    flightsInserted: flightResults.inserted,
+    flightsUpdated: flightResults.updated,
+    flightsSkipped: flightResults.skipped,
+    flightsMarkedForReconfirm: flightResults.markedForReconfirm,
+    cruisesInserted: cruiseResults.inserted,
+    cruisesUpdated: cruiseResults.updated,
+    cruisesSkipped: cruiseResults.skipped,
+    cruisesMarkedForReconfirm: cruiseResults.markedForReconfirm,
+  })
 
   return {
     flights_inserted: flightResults.inserted,
