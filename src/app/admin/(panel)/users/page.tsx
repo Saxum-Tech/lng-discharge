@@ -213,11 +213,12 @@ function EditUserModal({
             <X size={18} />
           </button>
         </div>
-        <p className="mb-4 text-sm text-gray-500">{user.full_name}</p>
         {error && (
           <p className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
         )}
         <form onSubmit={handleSave} className="space-y-4">
+          <Input label="Full name" value={user.full_name ?? ''} disabled />
+          <Input label="Email" type="email" value={user.email ?? ''} disabled />
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Role</label>
             <select
