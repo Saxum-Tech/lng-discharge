@@ -102,6 +102,9 @@ export default function CalendarPage() {
     format(addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i), 'yyyy-MM-dd'),
   )
   const visibleDays = view === 'month' ? monthDays : view === 'week' ? weekDays : [format(currentDate, 'yyyy-MM-dd')]
+  const monthHeaderDays = Array.from({ length: 7 }).map((_, i) =>
+    format(addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i), 'EEE'),
+  )
 
   const heading =
     view === 'month'
@@ -146,7 +149,9 @@ export default function CalendarPage() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className={`grid ${view === 'day' ? 'grid-cols-1' : 'grid-cols-7'} border-b border-gray-200 bg-gray-50 text-center text-xs font-medium text-gray-500`}>
-            {visibleDays.map((d) => <div key={d} className="py-2">{format(new Date(`${d}T00:00:00Z`), view === 'month' ? 'EEE' : 'EEE dd')}</div>)}
+            {(view === 'month' ? monthHeaderDays : visibleDays).map((d) => (
+              <div key={d} className="py-2">{view === 'month' ? d : format(new Date(`${d}T00:00:00Z`), 'EEE dd')}</div>
+            ))}
           </div>
           <div className={`grid ${view === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
             {visibleDays.map((day) => {
