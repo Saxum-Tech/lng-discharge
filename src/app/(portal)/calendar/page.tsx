@@ -18,9 +18,12 @@ import { degreesToArrow, fetchMaritimeForecast, getWeatherPresentation, type Mar
 import {
   addDays,
   addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
   format,
   isSameDay,
-  startOfDay,
+  startOfToday,
   startOfMonth,
   startOfWeek,
   subDays,
@@ -109,10 +112,18 @@ export default function CalendarPage() {
   }, [weatherForecast])
 
   const monthDays = getDaysInMonth(year, month)
+  const monthGridDays = useMemo(() => {
+    const monthStart = startOfMonth(currentDate)
+    const monthEnd = endOfMonth(currentDate)
+    return eachDayOfInterval({
+      start: startOfWeek(monthStart, { weekStartsOn: 1 }),
+      end: endOfWeek(monthEnd, { weekStartsOn: 1 }),
+    }).map((d) => format(d, 'yyyy-MM-dd'))
+  }, [currentDate])
   const weekDays = Array.from({ length: 7 }).map((_, i) =>
     format(addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i), 'yyyy-MM-dd'),
   )
-  const visibleDays = view === 'month' ? monthDays : view === 'week' ? weekDays : [format(currentDate, 'yyyy-MM-dd'), format(addDays(currentDate, 1), 'yyyy-MM-dd')]
+  const visibleDays = view === 'month' ? monthGridDays : view === 'week' ? weekDays : [format(currentDate, 'yyyy-MM-dd'), format(addDays(currentDate, 1), 'yyyy-MM-dd')]
   const monthHeaderDays = Array.from({ length: 7 }).map((_, i) =>
     format(addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i), 'EEE'),
   )
@@ -171,12 +182,13 @@ export default function CalendarPage() {
               const win = windowsByDate.get(day)
               const continuesFromPrevious = windows.some((w) => w.end_time.slice(0, 10) === day && w.date !== day)
               const eventCount = eventsByDate.get(day) ?? 0
-              const isToday = isSameDay(new Date(`${day}T00:00:00Z`), startOfDay(new Date()))
+              const isToday = isSameDay(new Date(`${day}T00:00:00Z`), startOfToday())
+              const isInCurrentMonth = monthDays.includes(day)
               const weather = weatherByDate.get(day)
               const weatherInfo = weather ? getWeatherPresentation(weather.weatherCode) : null
               return (
-                <Link key={day} href={`/day/${day}`} className={`group relative min-h-[110px] border-b border-r border-gray-100 p-2 transition-colors hover:bg-blue-50 ${win ? 'bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.1)]' : continuesFromPrevious ? 'bg-blue-50' : ''}`}>
-                  <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : 'text-gray-700'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
+                <Link key={day} href={`/day/${day}`} className={`group relative min-h-[110px] border-b border-r border-gray-100 p-2 transition-colors hover:bg-blue-50 ${!isInCurrentMonth ? 'bg-gray-50 text-gray-400' : win ? 'bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.1)]' : continuesFromPrevious ? 'bg-blue-50' : ''}`}>
+                  <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : isInCurrentMonth ? 'text-gray-700' : 'text-gray-400'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
                   {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-xs font-medium text-[var(--color-primary)]">Starts {format(new Date(win.start_time), 'HH:mm')} → {format(new Date(win.end_time), 'HH:mm')} LT ({formatDuration(win.duration_hours)})</span>}
                   {continuesFromPrevious && <span className="mt-1 block rounded bg-blue-100 px-1 py-0.5 text-xs font-medium text-blue-800">Window completes this morning</span>}
                   {weatherInfo && weather && (
