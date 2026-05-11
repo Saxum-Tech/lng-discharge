@@ -94,9 +94,6 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Maritime Weather</h2>
-          <p className="text-xs text-gray-500">
-            7-day compact view + 14-day alert coverage for {PORT_COORDINATES.latitude.toFixed(6)}, {PORT_COORDINATES.longitude.toFixed(6)}.
-          </p>
           <p className="text-xs text-amber-700">
             Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m and wind ≤ {BERTHING_WIND_LIMIT_MS} m/s for berthing, plus directional alongside limits.
           </p>
