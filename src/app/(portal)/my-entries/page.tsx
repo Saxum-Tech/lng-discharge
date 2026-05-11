@@ -237,7 +237,7 @@ export default function MyEntriesPage() {
               heading: `${f.ferry_name}${f.service_route ? ` (${f.service_route})` : ''}`,
               schedule: f.departure_time
                 ? `Arrival ${format(parseISO(f.arrival_time), 'dd MMM HH:mm')} / Departure ${format(parseISO(f.departure_time), 'dd MMM HH:mm')}`
-                : `Arrival ${format(parseISO(f.arrival_time), 'dd MMM yyyy HH:mm')}`,
+                : `Arrival ${format(parseISO(f.arrival_time), 'dd MMM HH:mm')}`,
               createdBy: f.created_by,
               createdAt: f.created_at,
               updatedAt: f.updated_at,

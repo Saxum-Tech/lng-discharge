@@ -68,7 +68,7 @@ function getAlongsideDirectionalLimits(day: MaritimeDailyForecast): {
   if (direction >= 180 && direction < 210) {
     return {
       maxWindKn: 15 * MPS_TO_KNOTS,
-      maxWaveM: periodBand === 5 ? 1 : periodBand === 8 ? 1 : 1,
+      maxWaveM: 1,
     }
   }
   if (direction >= 210 && direction < 240) {
