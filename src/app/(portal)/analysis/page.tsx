@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import {
   buildDayEvents,
   computeDischargeWindows,
+  getMissingFlightDates,
   formatDuration,
   toCSV,
   downloadCSV,
@@ -22,6 +23,7 @@ export default function AnalysisPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [windows, setWindows] = useState<DischargeWindow[]>([])
   const [loading, setLoading] = useState(true)
+  const [missingFlightDates, setMissingFlightDates] = useState<string[]>([])
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
@@ -47,6 +49,7 @@ export default function AnalysisPage() {
 
     const events = buildDayEvents(flightData ?? [], cruiseData ?? [])
     setWindows(computeDischargeWindows(events, year, month, minHours))
+    setMissingFlightDates(getMissingFlightDates(flightData ?? [], year, month))
     setLoading(false)
   }, [year, month, minHours])
 
@@ -125,6 +128,14 @@ export default function AnalysisPage() {
       )}
 
       {/* Table */}
+      {!loading && missingFlightDates.length > 0 && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          Missing flight data detected for {missingFlightDates.length} day
+          {missingFlightDates.length > 1 ? 's' : ''} this month. Please run API sync and validate
+          inbound schedule coverage.
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>All Discharge Windows (≥{minHours}h)</CardTitle>
