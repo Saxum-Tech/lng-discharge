@@ -80,13 +80,36 @@ export function computeDischargeWindows(
 
   const windows: Omit<DischargeWindow, 'is_longest_of_month'>[] = []
 
-  for (let i = 0; i < events.length - 1; i++) {
-    const endOfPrev = new Date(events[i].end_time ?? events[i].time)
-    const startOfNext = new Date(events[i + 1].time)
+  const isDeparture = (event: DayEvent): boolean =>
+    event.flight_direction === 'departure' || event.cruise_direction === 'departure'
+
+  const isArrival = (event: DayEvent): boolean =>
+    event.flight_direction === 'arrival' || event.cruise_direction === 'arrival'
+
+  const isOvernightWindow = (start: Date, end: Date): boolean => {
+    const startHour = start.getUTCHours() + start.getUTCMinutes() / 60
+    const endHour = end.getUTCHours() + end.getUTCMinutes() / 60
+    const crossesDayBoundary = start.toISOString().slice(0, 10) !== end.toISOString().slice(0, 10)
+
+    return crossesDayBoundary || startHour >= 20 || endHour <= 8
+  }
+
+  let lastDepartureEvent: DayEvent | null = null
+
+  for (const event of events) {
+    if (isDeparture(event)) {
+      lastDepartureEvent = event
+      continue
+    }
+
+    if (!isArrival(event) || !lastDepartureEvent) continue
+
+    const endOfPrev = new Date(lastDepartureEvent.end_time ?? lastDepartureEvent.time)
+    const startOfNext = new Date(event.time)
     const durationMs = startOfNext.getTime() - endOfPrev.getTime()
     const durationHours = durationMs / 3_600_000
 
-    if (durationHours >= minHours) {
+    if (durationHours >= minHours && isOvernightWindow(endOfPrev, startOfNext)) {
       windows.push({
         date: endOfPrev.toISOString().slice(0, 10),
         start_time: endOfPrev.toISOString(),
@@ -94,6 +117,8 @@ export function computeDischargeWindows(
         duration_hours: Math.round(durationHours * 10) / 10,
       })
     }
+
+    lastDepartureEvent = null
   }
 
   const maxDuration = Math.max(...windows.map((w) => w.duration_hours), 0)
@@ -124,6 +149,23 @@ export function getDaysInMonth(year: number, month: number): string[] {
     date.setUTCDate(date.getUTCDate() + 1)
   }
   return days
+}
+
+/**
+ * Return dates in month that do not contain any flight arrival/departure records.
+ */
+export function getMissingFlightDates(flights: Flight[], year: number, month: number): string[] {
+  const days = getDaysInMonth(year, month)
+  const flightDates = new Set<string>()
+
+  flights.forEach((flight) => {
+    flightDates.add(flight.scheduled_arrival.slice(0, 10))
+    if (flight.scheduled_departure) {
+      flightDates.add(flight.scheduled_departure.slice(0, 10))
+    }
+  })
+
+  return days.filter((day) => !flightDates.has(day))
 }
 
 /**

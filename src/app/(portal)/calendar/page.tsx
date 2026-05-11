@@ -8,6 +8,7 @@ import {
   buildDayEvents,
   computeDischargeWindows,
   getDaysInMonth,
+  getMissingFlightDates,
   formatDuration,
 } from '@/lib/shared-utils'
 import type { Flight, CruiseSchedule, DischargeWindow } from '@/lib/types'
@@ -21,6 +22,7 @@ export default function CalendarPage() {
   const [cruises, setCruises] = useState<CruiseSchedule[]>([])
   const [windows, setWindows] = useState<DischargeWindow[]>([])
   const [loading, setLoading] = useState(true)
+  const [missingFlightDates, setMissingFlightDates] = useState<string[]>([])
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
@@ -51,6 +53,7 @@ export default function CalendarPage() {
 
     const events = buildDayEvents(f, c)
     setWindows(computeDischargeWindows(events, year, month, minHours))
+    setMissingFlightDates(getMissingFlightDates(f, year, month))
     setLoading(false)
   }, [year, month, minHours])
 
@@ -197,6 +200,14 @@ export default function CalendarPage() {
       )}
 
       {/* Summary */}
+      {!loading && missingFlightDates.length > 0 && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          Flight data gap detected on {missingFlightDates.length} day
+          {missingFlightDates.length > 1 ? 's' : ''} this month. Run Public Data Sync to fill
+          missing API records.
+        </div>
+      )}
+
       {!loading && windows.length > 0 && (
         <p className="mt-4 text-sm text-gray-500">
           {windows.length} discharge window{windows.length > 1 ? 's' : ''} found this month
