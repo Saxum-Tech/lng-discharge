@@ -47,6 +47,10 @@ function hasValidCronToken(authHeader: string | null) {
   return bearer === syncToken
 }
 
+function startOfUtcDayIso(date = new Date()): string {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).toISOString()
+}
+
 export async function POST(request: Request) {
   try {
     const cronAuthorized = hasValidCronToken(request.headers.get('authorization'))
@@ -105,6 +109,26 @@ export async function POST(request: Request) {
         { skipped: true, reason },
         { status: 200 },
       )
+    }
+
+    if (cronAuthorized) {
+      const { count: completedTodayCount, error: completedTodayError } = await admin
+        .from('audit_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('action', 'public_data_sync_completed')
+        .eq('table_name', 'public_data_sync')
+        .gte('created_at', startOfUtcDayIso())
+
+      if (completedTodayError) throw completedTodayError
+
+      if ((completedTodayCount ?? 0) > 0) {
+        const reason = 'Auto sync already completed today (UTC); skipping duplicate daily run.'
+        await writeAuditLog('public_data_sync_skipped', {
+          trigger: 'cron',
+          reason,
+        })
+        return NextResponse.json({ skipped: true, reason }, { status: 200 })
+      }
     }
 
     const summary = await runPublicDataSync(admin)
