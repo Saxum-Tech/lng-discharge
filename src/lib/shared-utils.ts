@@ -216,6 +216,7 @@ function getIsoDateString(date: Date): string {
 }
 
 function makeBerthingTargetTime(dateKey: string, hour: number): Date {
+  // Decision scoring is normalized to UTC timestamps and converted for display in UI.
   return new Date(`${dateKey}T${String(hour).padStart(2, '0')}:00:00.000Z`)
 }
 

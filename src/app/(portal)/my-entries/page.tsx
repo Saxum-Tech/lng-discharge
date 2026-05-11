@@ -35,6 +35,10 @@ type UserLabelMap = Record<string, string>
 
 const EVENT_TYPE_OPTIONS: OperationalEventType[] = ['private_flight', 'ferry', 'port_constraint', 'other']
 
+function formatEventType(type: string): string {
+  return type.replaceAll('_', ' ')
+}
+
 function displayActorName(userId: string | null | undefined, labelMap: UserLabelMap, currentUserId: string | null) {
   if (!userId) return 'Unknown user'
   if (userId === currentUserId) return 'You'
@@ -258,7 +262,7 @@ export default function MyEntriesPage() {
             icon={<ClipboardList size={16} />}
             rows={operationalEvents.map((evt) => ({
               id: evt.id,
-              heading: `${evt.title} (${evt.event_type.replaceAll('_', ' ')})`,
+              heading: `${evt.title} (${formatEventType(evt.event_type)})`,
               schedule: evt.end_time
                 ? `${format(parseISO(evt.start_time), 'dd MMM HH:mm')} → ${format(parseISO(evt.end_time), 'dd MMM HH:mm')}`
                 : `${format(parseISO(evt.start_time), 'dd MMM yyyy HH:mm')}`,
@@ -339,7 +343,10 @@ function EntryList({
                 <p className="font-medium text-gray-900">{row.heading}</p>
                 <p className="text-xs text-gray-500">{row.schedule}</p>
                 <p className="mt-1 text-[11px] text-gray-400">
-                  Added by {displayActorName(row.createdBy, userLabels, currentUserId)} on {formatAuditDateTime(row.createdAt)} · Last update {formatAuditDateTime(row.updatedAt)}
+                  Added by {displayActorName(row.createdBy, userLabels, currentUserId)} on{' '}
+                  <time dateTime={row.createdAt}>{formatAuditDateTime(row.createdAt)}</time>
+                  {' · '}
+                  Last update <time dateTime={row.updatedAt}>{formatAuditDateTime(row.updatedAt)}</time>
                 </p>
               </div>
               <div className="flex gap-2">
@@ -546,7 +553,7 @@ function EntryModal({
                 >
                   {EVENT_TYPE_OPTIONS.map((option) => (
                     <option key={option} value={option}>
-                      {option.replaceAll('_', ' ')}
+                      {formatEventType(option)}
                     </option>
                   ))}
                 </select>

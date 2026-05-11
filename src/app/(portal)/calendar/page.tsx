@@ -432,7 +432,7 @@ function DischargeModal({
 
     const parsedQty = Number.parseFloat(quantity)
     if (Number.isNaN(parsedQty) || parsedQty < 0) {
-      setError('Approx quantity must be a positive number.')
+      setError('Approx quantity must be a non-negative number.')
       return
     }
 

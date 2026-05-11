@@ -18,6 +18,8 @@ export const MPS_TO_KNOTS = 1.943844
 export const BERTHING_WAVE_LIMIT_M = 1.0
 export const BERTHING_WIND_LIMIT_MS = 10
 export const BERTHING_WIND_LIMIT_KN = BERTHING_WIND_LIMIT_MS * MPS_TO_KNOTS
+const WAVE_PERIOD_SHORT_MAX_S = 6
+const WAVE_PERIOD_MEDIUM_MAX_S = 9
 
 type OpenMeteoDailyResponse = {
   daily?: {
@@ -63,7 +65,7 @@ function calculateDirectionalWeatherLimits(day: MaritimeDailyForecast): {
 
   const direction = ((day.waveDirectionDominant % 360) + 360) % 360
   const period = day.wavePeriodMax
-  const periodBand = period <= 6 ? 5 : period <= 9 ? 8 : 10
+  const periodBand = period <= WAVE_PERIOD_SHORT_MAX_S ? 5 : period <= WAVE_PERIOD_MEDIUM_MAX_S ? 8 : 10
 
   if (direction >= 180 && direction < 210) {
     return {
