@@ -14,7 +14,7 @@ import {
 import type { DischargeWindow } from '@/lib/types'
 import { useTheme } from '@/contexts/ThemeContext'
 import { format, startOfMonth } from 'date-fns'
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
@@ -72,6 +72,7 @@ export default function AnalysisPage() {
   }
 
   const longest = windows.find((w) => w.is_longest_of_month)
+  const missingFlightDateSet = new Set(missingFlightDates)
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -132,7 +133,20 @@ export default function AnalysisPage() {
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           Missing flight data detected for {missingFlightDates.length} day
           {missingFlightDates.length > 1 ? 's' : ''} this month. Please run API sync and validate
-          inbound schedule coverage.
+          inbound schedule coverage. Days marked with ! require review because flights are expected every
+          day.
+          <div className="mt-2 flex flex-wrap gap-2">
+            {missingFlightDates.map((date) => (
+              <Link
+                key={date}
+                href={`/day/${date}`}
+                className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-white px-2 py-0.5 text-xs font-medium text-red-700 hover:bg-red-100"
+              >
+                <AlertTriangle size={12} />
+                {format(new Date(date), 'EEE d MMM')}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
@@ -169,7 +183,18 @@ export default function AnalysisPage() {
                         href={`/day/${w.date}`}
                         className="text-[var(--color-primary)] hover:underline"
                       >
-                        {format(new Date(w.date), 'EEE d MMM')}
+                        <span className="inline-flex items-center gap-1">
+                          {format(new Date(w.date), 'EEE d MMM')}
+                          {missingFlightDateSet.has(w.date) && (
+                            <span
+                              title="Missing flight data - review required"
+                              className="inline-flex items-center text-red-600"
+                              aria-label="Missing flight data - review required"
+                            >
+                              <AlertTriangle size={12} />
+                            </span>
+                          )}
+                        </span>
                       </Link>
                     </td>
                     <td className="py-3 pr-4 text-gray-600">
