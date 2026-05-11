@@ -25,12 +25,12 @@ import {
   subMonths,
 } from 'date-fns'
 
-type CalendarView = 'month' | 'week' | 'day'
+type CalendarView = 'month' | 'week' | '2day'
 
 export default function CalendarPage() {
   const { settings } = useTheme()
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [view, setView] = useState<CalendarView>('week')
+  const [view, setView] = useState<CalendarView>('2day')
   const [flights, setFlights] = useState<Flight[]>([])
   const [cruises, setCruises] = useState<CruiseSchedule[]>([])
   const [windows, setWindows] = useState<DischargeWindow[]>([])
@@ -75,11 +75,11 @@ export default function CalendarPage() {
   }, [fetchData])
 
   function goPrev() {
-    setCurrentDate((d) => (view === 'month' ? subMonths(d, 1) : subDays(d, view === 'week' ? 7 : 1)))
+    setCurrentDate((d) => (view === 'month' ? subMonths(d, 1) : subDays(d, view === 'week' ? 7 : 2)))
   }
 
   function goNext() {
-    setCurrentDate((d) => (view === 'month' ? addMonths(d, 1) : addDays(d, view === 'week' ? 7 : 1)))
+    setCurrentDate((d) => (view === 'month' ? addMonths(d, 1) : addDays(d, view === 'week' ? 7 : 2)))
   }
 
   const windowsByDate = useMemo(() => {
@@ -101,7 +101,7 @@ export default function CalendarPage() {
   const weekDays = Array.from({ length: 7 }).map((_, i) =>
     format(addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i), 'yyyy-MM-dd'),
   )
-  const visibleDays = view === 'month' ? monthDays : view === 'week' ? weekDays : [format(currentDate, 'yyyy-MM-dd')]
+  const visibleDays = view === 'month' ? monthDays : view === 'week' ? weekDays : [format(currentDate, 'yyyy-MM-dd'), format(addDays(currentDate, 1), 'yyyy-MM-dd')]
   const monthHeaderDays = Array.from({ length: 7 }).map((_, i) =>
     format(addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i), 'EEE'),
   )
@@ -111,12 +111,11 @@ export default function CalendarPage() {
       ? format(startOfMonth(currentDate), 'MMMM yyyy')
       : view === 'week'
         ? `${format(new Date(`${weekDays[0]}T00:00:00Z`), 'dd MMM')} - ${format(new Date(`${weekDays[6]}T00:00:00Z`), 'dd MMM yyyy')}`
-        : format(currentDate, 'EEEE, dd MMM yyyy')
+        : `${format(currentDate, 'EEE, dd MMM')} - ${format(addDays(currentDate, 1), 'EEE, dd MMM yyyy')}`
 
+  const visibleDaySet = new Set(visibleDays)
   const dayWindows = windows.filter(
-    (w) =>
-      w.date === format(currentDate, 'yyyy-MM-dd') ||
-      w.end_time.slice(0, 10) === format(currentDate, 'yyyy-MM-dd'),
+    (w) => visibleDaySet.has(w.date) || visibleDaySet.has(w.end_time.slice(0, 10)),
   )
 
   return (
@@ -124,9 +123,9 @@ export default function CalendarPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">{heading}</h1>
         <div className="flex items-center gap-2">
-          {(['day', 'week', 'month'] as CalendarView[]).map((v) => (
+          {(['2day', 'week', 'month'] as CalendarView[]).map((v) => (
             <button key={v} onClick={() => setView(v)} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${view === v ? 'bg-[var(--color-primary)] text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
-              {v === 'day' ? '1 day' : v === 'week' ? '7 day' : 'Month'}
+              {v === '2day' ? '2 day' : v === 'week' ? '7 day' : 'Month'}
             </button>
           ))}
           <button onClick={goPrev} className="rounded-lg p-2 text-gray-600 hover:bg-gray-100" aria-label="Previous">
@@ -149,12 +148,12 @@ export default function CalendarPage() {
         <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[var(--color-primary)]" /></div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className={`grid ${view === 'day' ? 'grid-cols-1' : 'grid-cols-7'} border-b border-gray-200 bg-gray-50 text-center text-xs font-medium text-gray-500`}>
+          <div className={`grid ${view === '2day' ? 'grid-cols-2' : 'grid-cols-7'} border-b border-gray-200 bg-gray-50 text-center text-xs font-medium text-gray-500`}>
             {(view === 'month' ? monthHeaderDays : visibleDays).map((d) => (
               <div key={d} className="py-2">{view === 'month' ? d : format(new Date(`${d}T00:00:00Z`), 'EEE dd')}</div>
             ))}
           </div>
-          <div className={`grid ${view === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
+          <div className={`grid ${view === '2day' ? 'grid-cols-2' : 'grid-cols-7'}`}>
             {visibleDays.map((day) => {
               const win = windowsByDate.get(day)
               const continuesFromPrevious = windows.some((w) => w.end_time.slice(0, 10) === day && w.date !== day)
@@ -173,9 +172,9 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {view === 'day' && !loading && (
+      {view === '2day' && !loading && (
         <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
-          <p className="font-medium">Overnight windows touching this day: {dayWindows.length}</p>
+          <p className="font-medium">Overnight windows touching these days: {dayWindows.length}</p>
           {dayWindows.map((w) => (
             <p key={`${w.start_time}-${w.end_time}`}>• {format(new Date(w.start_time), 'dd MMM HH:mm')} to {format(new Date(w.end_time), 'dd MMM HH:mm')} LT ({formatDuration(w.duration_hours)})</p>
           ))}
