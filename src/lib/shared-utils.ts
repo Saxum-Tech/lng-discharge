@@ -211,11 +211,11 @@ export function computeDischargeWindows(
   }))
 }
 
-function toIsoDateKey(date: Date): string {
+function getIsoDateString(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
 
-function makeBerthTarget(dateKey: string, hour: number): Date {
+function makeBerthingTargetTime(dateKey: string, hour: number): Date {
   return new Date(`${dateKey}T${String(hour).padStart(2, '0')}:00:00.000Z`)
 }
 
@@ -245,8 +245,8 @@ export function computeDailySuitability(
   const missingDateSet = new Set(missingFlightDates)
 
   return dates.map((date) => {
-    const earlyTarget = makeBerthTarget(date, EARLY_BERTHING_HOUR)
-    const standardTarget = makeBerthTarget(date, STANDARD_BERTHING_HOUR)
+    const earlyTarget = makeBerthingTargetTime(date, EARLY_BERTHING_HOUR)
+    const standardTarget = makeBerthingTargetTime(date, STANDARD_BERTHING_HOUR)
 
     const relevantEvents = events.filter((event) => {
       const start = new Date(event.time)
@@ -284,7 +284,7 @@ export function computeDailySuitability(
       return {
         date,
         color: 'green',
-        recommended_berthing_time: makeBerthTarget(date, EARLY_BERTHING_HOUR).toISOString(),
+        recommended_berthing_time: makeBerthingTargetTime(date, EARLY_BERTHING_HOUR).toISOString(),
         has_early_berthing: true,
         is_weather_blocked: false,
         reasons: reasons.length ? reasons : ['Early berthing possible by 21:00'],
@@ -295,7 +295,7 @@ export function computeDailySuitability(
       return {
         date,
         color: 'orange',
-        recommended_berthing_time: makeBerthTarget(date, STANDARD_BERTHING_HOUR).toISOString(),
+        recommended_berthing_time: makeBerthingTargetTime(date, STANDARD_BERTHING_HOUR).toISOString(),
         has_early_berthing: false,
         is_weather_blocked: false,
         reasons: [...reasons, 'Traffic clears by 23:00 only'],
@@ -329,7 +329,7 @@ export function getDaysInMonth(year: number, month: number): string[] {
   const days: string[] = []
   const date = new Date(Date.UTC(year, month - 1, 1))
   while (date.getUTCMonth() === month - 1) {
-    days.push(toIsoDateKey(date))
+    days.push(getIsoDateString(date))
     date.setUTCDate(date.getUTCDate() + 1)
   }
   return days

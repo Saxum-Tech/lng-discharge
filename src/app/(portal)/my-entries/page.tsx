@@ -38,7 +38,7 @@ const EVENT_TYPE_OPTIONS: OperationalEventType[] = ['private_flight', 'ferry', '
 function displayActorName(userId: string | null | undefined, labelMap: UserLabelMap, currentUserId: string | null) {
   if (!userId) return 'Unknown user'
   if (userId === currentUserId) return 'You'
-  return labelMap[userId] ?? (userId ? `User ${userId.slice(0, 8)}` : 'Unknown user')
+  return labelMap[userId] ?? `User ${userId.slice(0, 8)}`
 }
 
 export default function MyEntriesPage() {
@@ -106,7 +106,8 @@ export default function MyEntriesPage() {
         .select('user_id, full_name')
         .in('user_id', actorIds)
       const mapping: UserLabelMap = {}
-      ;(profiles ?? []).forEach((p) => {
+      const profileRows = profiles ?? []
+      profileRows.forEach((p) => {
         if (p.user_id) mapping[p.user_id] = p.full_name ?? p.user_id.slice(0, 8)
       })
       setUserLabels(mapping)

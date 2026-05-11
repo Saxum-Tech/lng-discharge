@@ -55,7 +55,7 @@ export function degreesToArrow(degrees: number | null) {
   return arrows[index]
 }
 
-function getAlongsideDirectionalLimits(day: MaritimeDailyForecast): {
+function calculateDirectionalWeatherLimits(day: MaritimeDailyForecast): {
   maxWindKn: number
   maxWaveM: number
 } | null {
@@ -111,7 +111,7 @@ export function getWeatherSafetyStatus(day: MaritimeDailyForecast): {
     reasons.push(`Wave exceeds berthing limit (${BERTHING_WAVE_LIMIT_M.toFixed(1)} m)`)
   }
 
-  const directionalLimits = getAlongsideDirectionalLimits(day)
+  const directionalLimits = calculateDirectionalWeatherLimits(day)
   if (directionalLimits) {
     if (wind > directionalLimits.maxWindKn) {
       reasons.push('Wind exceeds alongside directional limit')
