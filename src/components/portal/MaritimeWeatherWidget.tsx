@@ -106,7 +106,7 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
             <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
               <p className="font-medium">{format(parseISO(highlightedDay.date), 'EEEE, d MMM yyyy')}</p>
               <p>
-                {getWeatherPresentation(highlightedDay.weatherCode).icon} {getWeatherPresentation(highlightedDay.weatherCode).label} · Wind {degreesToArrow(highlightedDay.windDirectionDominant)} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn), wave {degreesToArrow(highlightedDay.waveDirectionDominant)} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
+                {getWeatherPresentation(highlightedDay.weatherCode).icon} {getWeatherPresentation(highlightedDay.weatherCode).label} · 💨 {degreesToArrow(highlightedDay.windDirectionDominant)} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn), 🌊 {degreesToArrow(highlightedDay.waveDirectionDominant)} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
               </p>
             </div>
           )}
@@ -128,8 +128,8 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
                   <p className="text-[11px] font-semibold text-gray-600">{format(parseISO(day.date), 'EEE dd')}</p>
                   <p className="text-xl" aria-label={weather.label}>{weather.icon}</p>
                   <p className="truncate text-[11px] text-gray-700">{weather.label}</p>
-                  <p className="text-[11px] text-gray-500">Wind {degreesToArrow(day.windDirectionDominant)} {formatNumber(day.windSpeedMax, 0)} kn</p>
-                  <p className="text-[11px] text-gray-500">Wave {degreesToArrow(day.waveDirectionDominant)} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s</p>
+                  <p className="text-[11px] text-gray-500">💨 {degreesToArrow(day.windDirectionDominant)} {formatNumber(day.windSpeedMax, 0)} kn</p>
+                  <p className="text-[11px] text-gray-500">🌊 {degreesToArrow(day.waveDirectionDominant)} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s</p>
                 </div>
               )
             })}
