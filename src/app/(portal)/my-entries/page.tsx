@@ -257,7 +257,7 @@ export default function MyEntriesPage() {
             icon={<ClipboardList size={16} />}
             rows={operationalEvents.map((evt) => ({
               id: evt.id,
-              heading: `${evt.title} (${evt.event_type.replace('_', ' ')})`,
+              heading: `${evt.title} (${evt.event_type.replaceAll('_', ' ')})`,
               schedule: evt.end_time
                 ? `${format(parseISO(evt.start_time), 'dd MMM HH:mm')} → ${format(parseISO(evt.end_time), 'dd MMM HH:mm')}`
                 : `${format(parseISO(evt.start_time), 'dd MMM yyyy HH:mm')}`,
@@ -549,7 +549,7 @@ function EntryModal({
                 >
                   {EVENT_TYPE_OPTIONS.map((option) => (
                     <option key={option} value={option}>
-                      {option.replace('_', ' ')}
+                      {option.replaceAll('_', ' ')}
                     </option>
                   ))}
                 </select>

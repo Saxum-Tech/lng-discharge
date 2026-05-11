@@ -358,7 +358,7 @@ export default function CalendarPage() {
                     <td className="py-3 pr-4 text-gray-900">{row.vessel_name}</td>
                     <td className="py-3 pr-4 text-gray-900">{row.approx_quantity_m3.toLocaleString('en-GB')}</td>
                     <td className="py-3 pr-4">
-                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{row.status.replace('_', ' ')}</span>
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{row.status.replaceAll('_', ' ')}</span>
                     </td>
                     <td className="py-3 pr-4 text-xs text-gray-500">
                       <div>Added {formatAuditDateTime(row.created_at)}</div>
@@ -530,7 +530,7 @@ function DischargeModal({
               >
                 {DISCHARGE_STATUSES.map((s) => (
                   <option key={s} value={s}>
-                    {s.replace('_', ' ')}
+                    {s.replaceAll('_', ' ')}
                   </option>
                 ))}
               </select>
