@@ -159,10 +159,14 @@ export function computeDischargeWindows(
   const windows: Omit<DischargeWindow, 'is_longest_of_month'>[] = []
 
   const isDeparture = (event: DayEvent): boolean =>
-    event.flight_direction === 'departure' || event.cruise_direction === 'departure' || event.type === 'ferry'
+    event.flight_direction === 'departure' ||
+    event.cruise_direction === 'departure' ||
+    (event.type === 'ferry' && event.id.endsWith(':departure'))
 
   const isArrival = (event: DayEvent): boolean =>
-    event.flight_direction === 'arrival' || event.cruise_direction === 'arrival' || event.type === 'operational'
+    event.flight_direction === 'arrival' ||
+    event.cruise_direction === 'arrival' ||
+    (event.type === 'ferry' && event.id.endsWith(':arrival'))
 
   const isOvernightWindow = (start: Date, end: Date): boolean => {
     const startHour = start.getUTCHours() + start.getUTCMinutes() / 60

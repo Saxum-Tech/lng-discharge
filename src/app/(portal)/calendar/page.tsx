@@ -431,7 +431,7 @@ function DischargeModal({
       return
     }
 
-    const payload = {
+    const basePayload = {
       company_id: companyId,
       discharge_date: date,
       alongside_target_at: `${target || '23:00'}:00`,
@@ -439,7 +439,6 @@ function DischargeModal({
       approx_quantity_m3: parsedQty,
       status,
       notes: notes.trim() || null,
-      created_by: editItem?.created_by ?? userId,
       updated_by: userId,
     }
 
@@ -447,8 +446,8 @@ function DischargeModal({
     setError('')
 
     const query = editItem
-      ? supabase.from('planned_discharges').update(payload).eq('id', editItem.id)
-      : supabase.from('planned_discharges').insert(payload)
+      ? supabase.from('planned_discharges').update(basePayload).eq('id', editItem.id)
+      : supabase.from('planned_discharges').insert({ ...basePayload, created_by: userId })
 
     const { error: saveError } = await query
 

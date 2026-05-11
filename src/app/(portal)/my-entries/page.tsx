@@ -429,12 +429,11 @@ function EntryModal({
           scheduled_departure: departure ? `${departure}:00Z` : null,
           is_private: isPrivate,
           notes: notes || null,
-          created_by: (editItem as Flight)?.created_by ?? userId,
         }
 
         const { error } = editItem
           ? await supabase.from('flights').update(payload).eq('id', editItem.id)
-          : await supabase.from('flights').insert(payload)
+          : await supabase.from('flights').insert({ ...payload, created_by: userId })
 
         if (error) throw error
       } else if (type === 'cruise') {
@@ -446,12 +445,11 @@ function EntryModal({
           departure_date: cruiseDeparture ? `${cruiseDeparture}:00Z` : null,
           is_private: isPrivate,
           notes: notes || null,
-          created_by: (editItem as CruiseSchedule)?.created_by ?? userId,
         }
 
         const { error } = editItem
           ? await supabase.from('cruise_schedules').update(payload).eq('id', editItem.id)
-          : await supabase.from('cruise_schedules').insert(payload)
+          : await supabase.from('cruise_schedules').insert({ ...payload, created_by: userId })
 
         if (error) throw error
       } else if (type === 'ferry') {
@@ -463,12 +461,11 @@ function EntryModal({
           departure_time: ferryDeparture ? `${ferryDeparture}:00Z` : null,
           is_private: isPrivate,
           notes: notes || null,
-          created_by: (editItem as FerrySchedule)?.created_by ?? userId,
         }
 
         const { error } = editItem
           ? await supabase.from('ferries').update(payload).eq('id', editItem.id)
-          : await supabase.from('ferries').insert(payload)
+          : await supabase.from('ferries').insert({ ...payload, created_by: userId })
 
         if (error) throw error
       } else {
@@ -481,12 +478,11 @@ function EntryModal({
           blocks_discharge: blocksDischarge,
           is_private: isPrivate,
           notes: notes || null,
-          created_by: (editItem as OperationalEvent)?.created_by ?? userId,
         }
 
         const { error } = editItem
           ? await supabase.from('operational_events').update(payload).eq('id', editItem.id)
-          : await supabase.from('operational_events').insert(payload)
+          : await supabase.from('operational_events').insert({ ...payload, created_by: userId })
 
         if (error) throw error
       }

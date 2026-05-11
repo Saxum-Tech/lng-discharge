@@ -103,7 +103,9 @@ export function getWeatherSafetyStatus(day: MaritimeDailyForecast): {
   const wave = day.waveHeightMax ?? 0
 
   if (wind > BERTHING_WIND_LIMIT_KN) {
-    reasons.push(`Wind exceeds berthing limit (${BERTHING_WIND_LIMIT_MS} m/s)`)
+    reasons.push(
+      `Wind exceeds berthing limit (${BERTHING_WIND_LIMIT_MS} m/s / ${BERTHING_WIND_LIMIT_KN.toFixed(1)} kn)`,
+    )
   }
   if (wave > BERTHING_WAVE_LIMIT_M) {
     reasons.push(`Wave exceeds berthing limit (${BERTHING_WAVE_LIMIT_M.toFixed(1)} m)`)
