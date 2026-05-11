@@ -52,16 +52,23 @@ function startOfUtcDayIso(date = new Date()): string {
 }
 
 export async function POST(request: Request) {
+  const requestId = crypto.randomUUID()
+  const startedAt = Date.now()
+
   try {
     const cronAuthorized = hasValidCronToken(request.headers.get('authorization'))
     const superadminUserId = !cronAuthorized ? await getSuperadminUserId() : null
     const superadminAuthorized = Boolean(superadminUserId)
 
     if (!cronAuthorized && !superadminAuthorized) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      console.warn('[public-data-sync] Unauthorized request blocked', { requestId })
+      return NextResponse.json({ error: 'Unauthorized', requestId }, { status: 401 })
     }
 
     const admin = createSupabaseAdminClient()
+    const trigger = cronAuthorized ? 'cron' : 'manual'
+
+    console.info('[public-data-sync] Sync request accepted', { requestId, trigger })
 
     async function writeAuditLog(action: string, newValues: Record<string, unknown>) {
       const { error: auditError } = await admin.from('audit_logs').insert({
@@ -91,8 +98,9 @@ export async function POST(request: Request) {
         trigger: 'cron',
         reason,
       })
+      console.warn('[public-data-sync] Sync skipped', { requestId, trigger, reason })
       return NextResponse.json(
-        { skipped: true, reason },
+        { skipped: true, reason, requestId },
         { status: 200 },
       )
     }
@@ -105,8 +113,9 @@ export async function POST(request: Request) {
         trigger: 'cron',
         reason,
       })
+      console.warn('[public-data-sync] Sync skipped', { requestId, trigger, reason })
       return NextResponse.json(
-        { skipped: true, reason },
+        { skipped: true, reason, requestId },
         { status: 200 },
       )
     }
@@ -127,20 +136,33 @@ export async function POST(request: Request) {
           trigger: 'cron',
           reason,
         })
-        return NextResponse.json({ skipped: true, reason }, { status: 200 })
+        console.warn('[public-data-sync] Sync skipped', { requestId, trigger, reason })
+        return NextResponse.json({ skipped: true, reason, requestId }, { status: 200 })
       }
     }
 
-    const summary = await runPublicDataSync(admin)
+    const summary = await runPublicDataSync(admin, { requestId })
     await writeAuditLog('public_data_sync_completed', {
-      trigger: cronAuthorized ? 'cron' : 'manual',
+      request_id: requestId,
+      trigger,
       auto_sync_enabled: autoSyncEnabled,
+      duration_ms: Date.now() - startedAt,
       summary,
     })
 
-    return NextResponse.json({ ok: true, summary }, { status: 200 })
+    console.info('[public-data-sync] Sync completed', {
+      requestId,
+      trigger,
+      durationMs: Date.now() - startedAt,
+      flightsInserted: summary.flights_inserted,
+      cruisesInserted: summary.cruises_inserted,
+      warnings: summary.warnings.length,
+    })
+
+    return NextResponse.json({ ok: true, summary, requestId }, { status: 200 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Public data sync failed.'
+    console.error('[public-data-sync] Sync failed', { requestId, message, durationMs: Date.now() - startedAt })
 
     try {
       const admin = createSupabaseAdminClient()
@@ -149,7 +171,9 @@ export async function POST(request: Request) {
         table_name: 'public_data_sync',
         record_id: null,
         new_values: {
+          request_id: requestId,
           error: message,
+          duration_ms: Date.now() - startedAt,
         },
       })
     } catch {
@@ -157,7 +181,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { error: message },
+      { error: message, requestId },
       { status: 500 },
     )
   }
