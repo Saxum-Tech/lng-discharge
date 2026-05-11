@@ -51,6 +51,30 @@ function startOfUtcDayIso(date = new Date()): string {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).toISOString()
 }
 
+
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim().length > 0) return message
+  }
+  return fallback
+}
+
+function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    }
+  }
+  if (error && typeof error === 'object') {
+    return error as Record<string, unknown>
+  }
+  return { value: String(error) }
+}
+
 export async function POST(request: Request) {
   const requestId = crypto.randomUUID()
   const startedAt = Date.now()
@@ -161,8 +185,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, summary, requestId }, { status: 200 })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Public data sync failed.'
-    console.error('[public-data-sync] Sync failed', { requestId, message, durationMs: Date.now() - startedAt })
+    const message = extractErrorMessage(error, 'Public data sync failed.')
+    console.error('[public-data-sync] Sync failed', {
+      requestId,
+      message,
+      durationMs: Date.now() - startedAt,
+      error: serializeError(error),
+    })
 
     try {
       const admin = createSupabaseAdminClient()
