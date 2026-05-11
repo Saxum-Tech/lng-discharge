@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { buildDayEvents, computeDischargeWindows, formatDuration } from '@/lib/shared-utils'
 import type { DayEvent } from '@/lib/types'
 import { useTheme } from '@/contexts/ThemeContext'
-import { format, parseISO } from 'date-fns'
+import { addDays, format, parseISO } from 'date-fns'
 import { ArrowLeft, PlaneLanding, PlaneTakeoff, Ship, Clock, TriangleAlert } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatTimeInZone } from '@/lib/utils'
@@ -56,6 +56,17 @@ export default function DayDetailPage() {
   const windows = computeDischargeWindows(events, allYear, allMonth, minHours)
 
   const formattedDate = date ? format(parseISO(date), 'EEEE, d MMMM yyyy') : ''
+  const selectedDay = date ? parseISO(`${date}T00:00:00Z`) : new Date()
+  const nextDay = addDays(selectedDay, 1)
+  const timelineHours = Array.from({ length: 24 }, (_, i) => i)
+
+  const timelineEvents = events.filter((event) => {
+    const eventDate = parseISO(event.time)
+    return (
+      format(eventDate, 'yyyy-MM-dd') === format(selectedDay, 'yyyy-MM-dd') ||
+      format(eventDate, 'yyyy-MM-dd') === format(nextDay, 'yyyy-MM-dd')
+    )
+  })
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -78,8 +89,48 @@ export default function DayDetailPage() {
           {/* Events timeline */}
           <Card>
             <CardHeader>
-              <CardTitle>Events</CardTitle>
+              <CardTitle>Events (2-day hourly timeline)</CardTitle>
             </CardHeader>
+            <div className="mb-4 overflow-x-auto">
+              <div className="min-w-[720px] rounded-lg border border-gray-200">
+                <div className="grid grid-cols-[80px_1fr_1fr] border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600">
+                  <div className="p-2">Hour</div>
+                  <div className="p-2">{format(selectedDay, 'EEE dd MMM')}</div>
+                  <div className="p-2">{format(nextDay, 'EEE dd MMM')}</div>
+                </div>
+                {timelineHours.map((hour) => {
+                  const inHour = (day: Date) =>
+                    timelineEvents.filter((event) => {
+                      const dt = parseISO(event.time)
+                      return format(dt, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd') && dt.getHours() === hour
+                    })
+
+                  const dayAEvents = inHour(selectedDay)
+                  const dayBEvents = inHour(nextDay)
+
+                  return (
+                    <div key={hour} className="grid grid-cols-[80px_1fr_1fr] border-b border-gray-100 text-xs">
+                      <div className="border-r border-gray-100 p-2 font-medium text-gray-500">{String(hour).padStart(2, '0')}:00</div>
+                      {[dayAEvents, dayBEvents].map((slotEvents, i) => (
+                        <div key={i} className="border-r border-gray-100 p-2 last:border-r-0">
+                          {slotEvents.length === 0 ? (
+                            <span className="text-gray-300">—</span>
+                          ) : (
+                            <ul className="space-y-1">
+                              {slotEvents.map((event) => (
+                                <li key={event.id} className="rounded bg-blue-50 px-1.5 py-1 text-blue-900">
+                                  {formatTimeInZone(event.time)} {event.title}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
             {events.length === 0 ? (
               <p className="text-sm text-gray-400">No events on this day.</p>
             ) : (
