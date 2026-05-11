@@ -116,6 +116,7 @@ export default function DayDetailPage() {
             <CardHeader>
               <CardTitle>Events (2-day hourly timeline)</CardTitle>
             </CardHeader>
+            <p className="mb-3 text-xs text-gray-500">All times shown are in local time (LT).</p>
             <div className="mb-4 overflow-x-auto">
               <div className="min-w-[720px] rounded-lg border border-gray-200">
                 <div className="grid grid-cols-[80px_1fr_1fr] border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600">
@@ -230,7 +231,7 @@ export default function DayDetailPage() {
                       </p>
                       <p className="text-xs text-gray-500">
                         {format(parseISO(w.start_time), 'HH:mm')} –{' '}
-                        {format(parseISO(w.end_time), 'HH:mm')}
+                        {format(parseISO(w.end_time), 'HH:mm')} LT
                       </p>
                     </div>
                   </li>
