@@ -111,6 +111,11 @@ export default function AnalysisPage() {
         </div>
       </div>
 
+      <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+        Planning target: maximize the overnight discharge window from <strong>23:00 to 07:00 (8 hours)</strong>.
+        Ideal days allow berthing at 21:00–22:00 so vessel prep can complete before discharge starts at 23:00.
+      </div>
+
       {/* Highlight card */}
       {longest && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-6 py-4">
