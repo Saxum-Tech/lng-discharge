@@ -23,7 +23,7 @@ import type {
   PlannedDischarge,
   PlannedDischargeStatus,
 } from '@/lib/types'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Wind } from 'lucide-react'
 import { MaritimeWeatherWidget } from '@/components/portal/MaritimeWeatherWidget'
 import { degreesToArrow, fetchMaritimeForecast, getWeatherPresentation, type MaritimeDailyForecast } from '@/lib/open-meteo'
 import { formatAuditDateTime } from '@/lib/utils'
@@ -261,12 +261,6 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-4 text-xs text-gray-600">
-        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-emerald-300" /> Green: early berthing (21:00) possible</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-300" /> Orange: berthing starts at 23:00+</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-red-300" /> Red: no suitable 23:00+ window or weather block</span>
-      </div>
-
       {loading ? (
         <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[var(--color-primary)]" /></div>
       ) : (
@@ -286,27 +280,31 @@ export default function CalendarPage() {
               const weather = weatherByDate.get(day)
               const weatherInfo = weather ? getWeatherPresentation(weather.weatherCode) : null
               return (
-                <Link key={day} href={`/day/${day}`} className={`group relative min-h-[150px] border-b border-r border-gray-100 p-2 transition-colors hover:bg-blue-50 ${!isInCurrentMonth ? 'bg-gray-50 text-gray-400' : daySuitability ? colorClasses[daySuitability.color] : ''}`}>
+                <Link key={day} href={`/day/${day}`} className={`group relative min-h-[112px] border-b border-r border-gray-100 p-1.5 transition-colors hover:bg-blue-50 ${!isInCurrentMonth ? 'bg-gray-50 text-gray-400' : daySuitability ? colorClasses[daySuitability.color] : ''}`}>
                   <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : isInCurrentMonth ? 'text-gray-700' : 'text-gray-400'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
-                  {daySuitability && (
-                    <span className={`mt-1 block rounded px-1 py-0.5 text-xs font-semibold ${colorBadgeClasses[daySuitability.color]}`}>
-                      {daySuitability.color.toUpperCase()} {daySuitability.recommended_berthing_time ? `• ${format(parseISO(daySuitability.recommended_berthing_time), 'HH:mm')}` : ''}
+                  {missingFlightDates.includes(day) && (
+                    <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1 py-0.5 text-[10px] font-semibold text-red-800" title="No flights found for this date">
+                      <AlertTriangle size={10} /> !
                     </span>
                   )}
-                  {daySuitability?.reasons?.slice(0, 2).map((reason) => (
-                    <span key={reason} className="mt-1 block text-[10px] text-gray-700">
-                      • {reason}
+                  {daySuitability && (
+                    <span className={`mt-1 block rounded px-1 py-0.5 text-[11px] font-semibold ${colorBadgeClasses[daySuitability.color]}`}>
+                      {daySuitability.recommended_berthing_time ? `BT ${format(parseISO(daySuitability.recommended_berthing_time), 'HH:mm')}` : 'No BT'}
                     </span>
-                  ))}
-                  {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-xs font-medium text-[var(--color-primary)]">Window {format(new Date(win.start_time), 'HH:mm')} → {format(new Date(win.end_time), 'HH:mm')} ({formatDuration(win.duration_hours)})</span>}
+                  )}
+                  {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">{format(new Date(win.start_time), 'HH:mm')}→{format(new Date(win.end_time), 'HH:mm')} ({formatDuration(win.duration_hours)})</span>}
                   {weatherInfo && weather && (
-                    <div className={`mt-1 rounded px-1 py-0.5 text-xs ${daySuitability?.is_weather_blocked ? 'bg-red-100 text-red-900' : weatherInfo.isAdverse ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-700'}`}>
+                    <div className={`mt-1 rounded px-1 py-0.5 text-[10px] ${daySuitability?.is_weather_blocked ? 'bg-red-100 text-red-900' : weatherInfo.isAdverse ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-700'}`}>
                       <div className="inline-flex items-center gap-1">{weatherInfo.icon} {weatherInfo.label}</div>
-                      <div>Wind {degreesToArrow(weather.windDirectionDominant)} {weather.windSpeedMax?.toFixed(0) ?? '—'} kn</div>
-                      <div>Wave {degreesToArrow(weather.waveDirectionDominant)} {weather.waveHeightMax?.toFixed(1) ?? '—'} m</div>
+                      <div className="inline-flex items-center gap-1">
+                        <Wind size={11} /> {degreesToArrow(weather.windDirectionDominant)} {weather.windSpeedMax?.toFixed(0) ?? '—'} kn
+                      </div>
+                      <div className="inline-flex items-center gap-1">
+                        <span aria-hidden>🌊</span> {degreesToArrow(weather.waveDirectionDominant)} {weather.waveHeightMax?.toFixed(1) ?? '—'} m
+                      </div>
                     </div>
                   )}
-                  {eventCount > 0 && <span className="mt-1 block text-xs text-gray-500">{eventCount} event{eventCount > 1 ? 's' : ''}</span>}
+                  {eventCount > 0 && <span className="mt-1 block text-[10px] text-gray-500">{eventCount} evt</span>}
                 </Link>
               )
             })}
