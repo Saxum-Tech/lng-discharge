@@ -13,6 +13,7 @@ import {
 } from '@/lib/shared-utils'
 import type { Flight, CruiseSchedule, DischargeWindow } from '@/lib/types'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { MaritimeWeatherWidget } from '@/components/portal/MaritimeWeatherWidget'
 import {
   addDays,
   addMonths,
@@ -120,6 +121,8 @@ export default function CalendarPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <MaritimeWeatherWidget />
+
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">{heading}</h1>
         <div className="flex items-center gap-2">
