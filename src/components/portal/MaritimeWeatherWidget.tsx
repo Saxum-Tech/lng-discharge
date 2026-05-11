@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { addDays, format, isAfter, parseISO, startOfDay } from 'date-fns'
+import { Waves, Wind } from 'lucide-react'
 import {
   fetchMaritimeForecast,
   degreesToArrow,
@@ -105,8 +106,12 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
           {highlightedDay && (
             <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
               <p className="font-medium">{format(parseISO(highlightedDay.date), 'EEEE, d MMM yyyy')}</p>
-              <p>
-                {getWeatherPresentation(highlightedDay.weatherCode).icon} {getWeatherPresentation(highlightedDay.weatherCode).label} · Wind {degreesToArrow(highlightedDay.windDirectionDominant)} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn), wave {degreesToArrow(highlightedDay.waveDirectionDominant)} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
+              <p className="flex flex-wrap items-center gap-1">
+                {getWeatherPresentation(highlightedDay.weatherCode).icon} {getWeatherPresentation(highlightedDay.weatherCode).label} ·
+                <Wind className="h-3 w-3" aria-hidden="true" />
+                {degreesToArrow(highlightedDay.windDirectionDominant)} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn),
+                <Waves className="h-3 w-3" aria-hidden="true" />
+                {degreesToArrow(highlightedDay.waveDirectionDominant)} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
               </p>
             </div>
           )}
@@ -128,8 +133,14 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
                   <p className="text-[11px] font-semibold text-gray-600">{format(parseISO(day.date), 'EEE dd')}</p>
                   <p className="text-xl" aria-label={weather.label}>{weather.icon}</p>
                   <p className="truncate text-[11px] text-gray-700">{weather.label}</p>
-                  <p className="text-[11px] text-gray-500">Wind {degreesToArrow(day.windDirectionDominant)} {formatNumber(day.windSpeedMax, 0)} kn</p>
-                  <p className="text-[11px] text-gray-500">Wave {degreesToArrow(day.waveDirectionDominant)} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s</p>
+                  <p className="flex items-center justify-center gap-1 text-[11px] text-gray-500">
+                    <Wind className="h-3 w-3" aria-hidden="true" />
+                    {degreesToArrow(day.windDirectionDominant)} {formatNumber(day.windSpeedMax, 0)} kn
+                  </p>
+                  <p className="flex items-center justify-center gap-1 text-[11px] text-gray-500">
+                    <Waves className="h-3 w-3" aria-hidden="true" />
+                    {degreesToArrow(day.waveDirectionDominant)} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s
+                  </p>
                 </div>
               )
             })}
