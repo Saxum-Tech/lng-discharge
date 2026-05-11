@@ -10,7 +10,8 @@ import type {
 import type { MaritimeDailyForecast } from './open-meteo'
 import { getWeatherSafetyStatus } from './open-meteo'
 
-const EARLY_BERTHING_HOUR = 21
+const IDEAL_EARLY_BERTHING_HOUR = 21
+const LATEST_EARLY_BERTHING_HOUR = 22
 const STANDARD_BERTHING_HOUR = 23
 
 /**
@@ -252,7 +253,8 @@ export function computeDailySuitability(
   const missingDateSet = new Set(missingFlightDates)
 
   return dates.map((date) => {
-    const earlyTarget = makeBerthingTargetTime(date, EARLY_BERTHING_HOUR)
+    const idealEarlyTarget = makeBerthingTargetTime(date, IDEAL_EARLY_BERTHING_HOUR)
+    const latestEarlyTarget = makeBerthingTargetTime(date, LATEST_EARLY_BERTHING_HOUR)
     const standardTarget = makeBerthingTargetTime(date, STANDARD_BERTHING_HOUR)
 
     const relevantEvents = events.filter((event) => {
@@ -263,7 +265,8 @@ export function computeDailySuitability(
       return end >= dayStart && start <= dayEnd
     })
 
-    const earlyBlockingEvents = relevantEvents.filter((event) => eventBlocksTarget(event, earlyTarget))
+    const idealEarlyBlockingEvents = relevantEvents.filter((event) => eventBlocksTarget(event, idealEarlyTarget))
+    const latestEarlyBlockingEvents = relevantEvents.filter((event) => eventBlocksTarget(event, latestEarlyTarget))
     const standardBlockingEvents = relevantEvents.filter((event) => eventBlocksTarget(event, standardTarget))
 
     const weather = weatherByDate.get(date)
@@ -287,14 +290,25 @@ export function computeDailySuitability(
       }
     }
 
-    if (earlyBlockingEvents.length === 0) {
+    if (idealEarlyBlockingEvents.length === 0) {
       return {
         date,
         color: 'green',
-        recommended_berthing_time: makeBerthingTargetTime(date, EARLY_BERTHING_HOUR).toISOString(),
+        recommended_berthing_time: makeBerthingTargetTime(date, IDEAL_EARLY_BERTHING_HOUR).toISOString(),
         has_early_berthing: true,
         is_weather_blocked: false,
-        reasons: reasons.length ? reasons : ['Early berthing possible by 21:00'],
+        reasons: reasons.length ? reasons : ['Early berthing possible by 21:00 (ideal 2-hour pre-berth lead)'],
+      }
+    }
+
+    if (latestEarlyBlockingEvents.length === 0) {
+      return {
+        date,
+        color: 'green',
+        recommended_berthing_time: makeBerthingTargetTime(date, LATEST_EARLY_BERTHING_HOUR).toISOString(),
+        has_early_berthing: true,
+        is_weather_blocked: false,
+        reasons: [...reasons, 'Berthing possible by 22:00 (1-hour pre-berth lead before 23:00 discharge)'],
       }
     }
 
@@ -305,7 +319,7 @@ export function computeDailySuitability(
         recommended_berthing_time: makeBerthingTargetTime(date, STANDARD_BERTHING_HOUR).toISOString(),
         has_early_berthing: false,
         is_weather_blocked: false,
-        reasons: [...reasons, 'Traffic clears by 23:00 only'],
+        reasons: [...reasons, 'Traffic clears by 23:00 only (no pre-berth preparation window)'],
       }
     }
 
