@@ -8,7 +8,17 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { format, parseISO } from 'date-fns'
-import { Plus, Trash2, Pencil, Plane, Ship, X } from 'lucide-react'
+import {
+  Plus,
+  Trash2,
+  Pencil,
+  Plane,
+  PlaneLanding,
+  PlaneTakeoff,
+  Ship,
+  ShipWheel,
+  X,
+} from 'lucide-react'
 
 type EntryType = 'flight' | 'cruise'
 
@@ -111,7 +121,21 @@ export default function MyEntriesPage() {
                         {f.flight_number} — {f.origin} → {f.destination}
                       </p>
                       <p className="text-xs text-gray-400">
-                        Arrival: {format(parseISO(f.scheduled_arrival), 'dd MMM yyyy HH:mm')}
+                        {f.origin === 'GIB' ? (
+                          <span className="inline-flex items-center gap-1">
+                            <PlaneTakeoff size={12} />
+                            Departure:{' '}
+                            {format(
+                              parseISO(f.scheduled_departure ?? f.scheduled_arrival),
+                              'dd MMM yyyy HH:mm',
+                            )}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            <PlaneLanding size={12} />
+                            Arrival: {format(parseISO(f.scheduled_arrival), 'dd MMM yyyy HH:mm')}
+                          </span>
+                        )}
                         {f.is_private && (
                           <span className="ml-2 rounded bg-gray-100 px-1 py-0.5 text-gray-500">
                             Private
@@ -160,7 +184,17 @@ export default function MyEntriesPage() {
                         {c.vessel_type ? ` (${c.vessel_type})` : ''}
                       </p>
                       <p className="text-xs text-gray-400">
-                        Arrival: {format(parseISO(c.arrival_date), 'dd MMM yyyy HH:mm')}
+                        {c.departure_date ? (
+                          <span className="inline-flex items-center gap-1">
+                            <ShipWheel size={12} />
+                            Departure: {format(parseISO(c.departure_date), 'dd MMM yyyy HH:mm')}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            <Ship size={12} />
+                            Arrival: {format(parseISO(c.arrival_date), 'dd MMM yyyy HH:mm')}
+                          </span>
+                        )}
                         {c.is_private && (
                           <span className="ml-2 rounded bg-gray-100 px-1 py-0.5 text-gray-500">
                             Private
