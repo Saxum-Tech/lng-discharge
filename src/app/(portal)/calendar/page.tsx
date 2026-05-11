@@ -233,6 +233,11 @@ export default function CalendarPage() {
     orange: 'bg-amber-50',
     red: 'bg-red-50',
   }
+  const colorBadgeClasses: Record<DaySuitability['color'], string> = {
+    green: 'bg-emerald-200 text-emerald-900',
+    orange: 'bg-amber-200 text-amber-900',
+    red: 'bg-red-200 text-red-900',
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -284,7 +289,7 @@ export default function CalendarPage() {
                 <Link key={day} href={`/day/${day}`} className={`group relative min-h-[150px] border-b border-r border-gray-100 p-2 transition-colors hover:bg-blue-50 ${!isInCurrentMonth ? 'bg-gray-50 text-gray-400' : daySuitability ? colorClasses[daySuitability.color] : ''}`}>
                   <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : isInCurrentMonth ? 'text-gray-700' : 'text-gray-400'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
                   {daySuitability && (
-                    <span className={`mt-1 block rounded px-1 py-0.5 text-xs font-semibold ${daySuitability.color === 'green' ? 'bg-emerald-200 text-emerald-900' : daySuitability.color === 'orange' ? 'bg-amber-200 text-amber-900' : 'bg-red-200 text-red-900'}`}>
+                    <span className={`mt-1 block rounded px-1 py-0.5 text-xs font-semibold ${colorBadgeClasses[daySuitability.color]}`}>
                       {daySuitability.color.toUpperCase()} {daySuitability.recommended_berthing_time ? `• ${format(parseISO(daySuitability.recommended_berthing_time), 'HH:mm')}` : ''}
                     </span>
                   )}

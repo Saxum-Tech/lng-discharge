@@ -38,7 +38,7 @@ const EVENT_TYPE_OPTIONS: OperationalEventType[] = ['private_flight', 'ferry', '
 function displayActorName(userId: string | null | undefined, labelMap: UserLabelMap, currentUserId: string | null) {
   if (!userId) return 'Unknown user'
   if (userId === currentUserId) return 'You'
-  return labelMap[userId] ?? `User ${userId.slice(0, 8)}`
+  return labelMap[userId] ?? (userId ? `User ${userId.slice(0, 8)}` : 'Unknown user')
 }
 
 export default function MyEntriesPage() {

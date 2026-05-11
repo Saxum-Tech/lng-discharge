@@ -262,7 +262,7 @@ export function computeDailySuitability(
     const weather = weatherByDate.get(date)
     const weatherSafety = weather
       ? getWeatherSafetyStatus(weather)
-      : { isUnsafe: false, reasons: [] as string[] }
+      : { isUnsafe: false, reasons: [] }
     const weatherBlocked = weatherSafety.isUnsafe
 
     const reasons: string[] = []
