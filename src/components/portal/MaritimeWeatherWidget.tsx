@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { format, parseISO } from 'date-fns'
+import { addDays, format, isAfter, parseISO, startOfDay } from 'date-fns'
 import { fetchMaritimeForecast, type MaritimeDailyForecast, PORT_COORDINATES } from '@/lib/open-meteo'
 
 type MaritimeWeatherWidgetProps = {
@@ -16,20 +16,45 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    let intervalId: ReturnType<typeof setInterval> | undefined
+    let mounted = true
+
     const load = async () => {
       try {
-        setLoading(true)
         const data = await fetchMaritimeForecast(14)
+        if (!mounted) return
         setForecast(data)
         setError(null)
       } catch (err) {
+        if (!mounted) return
         setError(err instanceof Error ? err.message : 'Unable to load weather data')
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
 
-    load()
+    const scheduleHourlyRefresh = () => {
+      const now = new Date()
+      const nextHour = new Date(now)
+      nextHour.setMinutes(0, 0, 0)
+      nextHour.setHours(nextHour.getHours() + 1)
+      const msUntilNextHour = nextHour.getTime() - now.getTime()
+
+      timeoutId = setTimeout(() => {
+        load()
+        intervalId = setInterval(load, 60 * 60 * 1000)
+      }, msUntilNextHour)
+    }
+
+    void load()
+    scheduleHourlyRefresh()
+
+    return () => {
+      mounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+      if (intervalId) clearInterval(intervalId)
+    }
   }, [])
 
   const highlightedDay = useMemo(() => {
@@ -37,13 +62,27 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
     return forecast.find((day) => day.date === selectedDate) ?? null
   }, [forecast, selectedDate])
 
+  const selectedDayMessage = useMemo(() => {
+    if (!selectedDate || loading || error) return null
+    if (highlightedDay) return null
+
+    const selected = parseISO(`${selectedDate}T00:00:00`)
+    const afterWindow = isAfter(startOfDay(selected), startOfDay(addDays(new Date(), 13)))
+
+    if (afterWindow) {
+      return 'No weather data yet available for this date. Forecast coverage is limited to the rolling next 14 calendar days.'
+    }
+
+    return 'No weather data available for this selected date in the current forecast window.'
+  }, [selectedDate, loading, error, highlightedDay])
+
   return (
     <section className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Maritime Weather (Next 14 Days)</h2>
           <p className="text-xs text-gray-500">
-            Open-Meteo forecast for {PORT_COORDINATES.latitude.toFixed(6)}, {PORT_COORDINATES.longitude.toFixed(6)}
+            Open-Meteo forecast for {PORT_COORDINATES.latitude.toFixed(6)}, {PORT_COORDINATES.longitude.toFixed(6)}. Refreshes hourly on the hour.
           </p>
         </div>
       </div>
@@ -60,6 +99,12 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
               <p>
                 Wind {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn), wave height {formatNumber(highlightedDay.waveHeightMax)} m.
               </p>
+            </div>
+          )}
+
+          {selectedDayMessage && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              {selectedDayMessage}
             </div>
           )}
 
