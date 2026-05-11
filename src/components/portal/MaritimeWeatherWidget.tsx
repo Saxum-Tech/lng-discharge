@@ -7,6 +7,9 @@ import {
   fetchMaritimeForecast,
   degreesToArrow,
   getWeatherPresentation,
+  getWeatherSafetyStatus,
+  BERTHING_WAVE_LIMIT_M,
+  BERTHING_WIND_LIMIT_MS,
   type MaritimeDailyForecast,
   PORT_COORDINATES,
 } from '@/lib/open-meteo'
@@ -84,7 +87,7 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
   }, [selectedDate, loading, error, highlightedDay])
 
   const shortForecast = forecast.slice(0, 7)
-  const adverseDays = forecast.filter((day) => getWeatherPresentation(day.weatherCode).isAdverse)
+  const adverseDays = forecast.filter((day) => getWeatherPresentation(day.weatherCode).isAdverse || getWeatherSafetyStatus(day).isUnsafe)
 
   return (
     <section className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -93,6 +96,9 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
           <h2 className="text-lg font-semibold text-gray-900">Maritime Weather</h2>
           <p className="text-xs text-gray-500">
             7-day compact view + 14-day alert coverage for {PORT_COORDINATES.latitude.toFixed(6)}, {PORT_COORDINATES.longitude.toFixed(6)}.
+          </p>
+          <p className="text-xs text-amber-700">
+            Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m and wind ≤ {BERTHING_WIND_LIMIT_MS} m/s for berthing, plus directional alongside limits.
           </p>
         </div>
       </div>
@@ -127,9 +133,10 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
           <div className="grid grid-cols-7 gap-2">
             {shortForecast.map((day) => {
               const weather = getWeatherPresentation(day.weatherCode)
+              const safety = getWeatherSafetyStatus(day)
               const isSelected = selectedDate === day.date
               return (
-                <div key={day.date} className={`rounded-lg border p-2 text-center ${isSelected ? 'border-blue-300 bg-blue-50' : weather.isAdverse ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
+                <div key={day.date} className={`rounded-lg border p-2 text-center ${isSelected ? 'border-blue-300 bg-blue-50' : weather.isAdverse || safety.isUnsafe ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
                   <p className="text-[11px] font-semibold text-gray-600">{format(parseISO(day.date), 'EEE dd')}</p>
                   <p className="text-xl" aria-label={weather.label}>{weather.icon}</p>
                   <p className="truncate text-[11px] text-gray-700">{weather.label}</p>
@@ -141,6 +148,7 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
                     <Waves className="h-3 w-3" aria-hidden="true" />
                     {degreesToArrow(day.waveDirectionDominant)} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s
                   </p>
+                  {safety.isUnsafe && <p className="mt-1 text-[10px] font-semibold text-amber-800">Safety limit exceeded</p>}
                 </div>
               )
             })}

@@ -1,9 +1,27 @@
-import type { Flight, CruiseSchedule, DischargeWindow, DayEvent } from './types'
+import type {
+  Flight,
+  CruiseSchedule,
+  FerrySchedule,
+  OperationalEvent,
+  DischargeWindow,
+  DayEvent,
+  DaySuitability,
+} from './types'
+import type { MaritimeDailyForecast } from './open-meteo'
+import { getWeatherSafetyStatus } from './open-meteo'
+
+const EARLY_BERTHING_HOUR = 21
+const STANDARD_BERTHING_HOUR = 23
 
 /**
- * Merge flights and cruises into a flat list of DayEvents sorted by time.
+ * Merge flights, cruises, ferries and operational events into a flat list of DayEvents sorted by time.
  */
-export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): DayEvent[] {
+export function buildUnifiedDayEvents(
+  flights: Flight[],
+  cruises: CruiseSchedule[],
+  ferries: FerrySchedule[] = [],
+  operationalEvents: OperationalEvent[] = [],
+): DayEvent[] {
   const cruiseEvents: DayEvent[] = cruises.flatMap((c) => {
     const vesselLabel = `🚢 ${c.vessel_name}${c.vessel_type ? ` (${c.vessel_type})` : ''}`
     const arrivals: DayEvent[] = [
@@ -34,11 +52,56 @@ export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): Da
     ]
   })
 
+  const ferryEvents: DayEvent[] = ferries.flatMap((f) => {
+    const arrivals: DayEvent[] = [
+      {
+        id: `${f.id}:arrival`,
+        type: 'ferry',
+        title: `⛴ ${f.ferry_name} — Arrival`,
+        time: f.arrival_time,
+        is_private: f.is_private,
+        company_id: f.company_id,
+        notes: f.notes,
+        blocks_discharge: true,
+      },
+    ]
+
+    if (!f.departure_time) return arrivals
+
+    return [
+      ...arrivals,
+      {
+        id: `${f.id}:departure`,
+        type: 'ferry',
+        title: `⛴ ${f.ferry_name} — Departure`,
+        time: f.departure_time,
+        is_private: f.is_private,
+        company_id: f.company_id,
+        notes: f.notes,
+        blocks_discharge: true,
+      },
+    ]
+  })
+
+  const manualEvents: DayEvent[] = operationalEvents.map((event) => ({
+    id: event.id,
+    type: 'operational',
+    title: `📌 ${event.title}`,
+    time: event.start_time,
+    end_time: event.end_time ?? undefined,
+    is_private: event.is_private,
+    company_id: event.company_id,
+    notes: event.notes,
+    blocks_discharge: event.blocks_discharge,
+  }))
+
   const events: DayEvent[] = [
     ...flights.map(
       (f): DayEvent => {
         const isDepartureFlight = f.origin === 'GIB'
-        const primaryTime = isDepartureFlight ? (f.scheduled_departure ?? f.scheduled_arrival) : f.scheduled_arrival
+        const primaryTime = isDepartureFlight
+          ? (f.scheduled_departure ?? f.scheduled_arrival)
+          : f.scheduled_arrival
 
         return {
           id: f.id,
@@ -52,6 +115,7 @@ export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): Da
           is_private: f.is_private,
           company_id: f.company_id,
           notes: f.notes,
+          blocks_discharge: true,
           delay_minutes: (() => {
             const m = f.notes?.match(/DELAYED\s+(\d+)\s+min/i)
             return m ? Number.parseInt(m[1], 10) : null
@@ -60,10 +124,24 @@ export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): Da
       },
     ),
     ...cruiseEvents,
+    ...ferryEvents,
+    ...manualEvents,
   ]
 
   events.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
   return events
+}
+
+/**
+ * Backwards-compatible alias used by existing pages.
+ */
+export function buildDayEvents(
+  flights: Flight[],
+  cruises: CruiseSchedule[],
+  ferries: FerrySchedule[] = [],
+  operationalEvents: OperationalEvent[] = [],
+): DayEvent[] {
+  return buildUnifiedDayEvents(flights, cruises, ferries, operationalEvents)
 }
 
 /**
@@ -73,7 +151,7 @@ export function buildDayEvents(flights: Flight[], cruises: CruiseSchedule[]): Da
 export function computeDischargeWindows(
   events: DayEvent[],
   _year: number,
-  _month: number, // 1-based
+  _month: number,
   minHours = 4,
 ): DischargeWindow[] {
   if (events.length < 2) return []
@@ -81,10 +159,14 @@ export function computeDischargeWindows(
   const windows: Omit<DischargeWindow, 'is_longest_of_month'>[] = []
 
   const isDeparture = (event: DayEvent): boolean =>
-    event.flight_direction === 'departure' || event.cruise_direction === 'departure'
+    event.flight_direction === 'departure' ||
+    event.cruise_direction === 'departure' ||
+    (event.type === 'ferry' && event.id.endsWith(':departure'))
 
   const isArrival = (event: DayEvent): boolean =>
-    event.flight_direction === 'arrival' || event.cruise_direction === 'arrival'
+    event.flight_direction === 'arrival' ||
+    event.cruise_direction === 'arrival' ||
+    (event.type === 'ferry' && event.id.endsWith(':arrival'))
 
   const isOvernightWindow = (start: Date, end: Date): boolean => {
     const startHour = start.getUTCHours() + start.getUTCMinutes() / 60
@@ -129,6 +211,109 @@ export function computeDischargeWindows(
   }))
 }
 
+function getIsoDateString(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+function makeBerthingTargetTime(dateKey: string, hour: number): Date {
+  // Decision scoring is normalized to UTC timestamps and converted for display in UI.
+  return new Date(`${dateKey}T${String(hour).padStart(2, '0')}:00:00.000Z`)
+}
+
+function eventBlocksTarget(event: DayEvent, target: Date): boolean {
+  if (event.blocks_discharge === false) return false
+
+  const eventStart = new Date(event.time)
+  const eventEnd = event.end_time ? new Date(event.end_time) : eventStart
+
+  if (eventStart >= target) return true
+  if (eventStart < target && eventEnd > target) return true
+
+  return false
+}
+
+/**
+ * Compute day-level suitability according to LNG berthing rules and weather thresholds.
+ */
+export function computeDailySuitability(
+  events: DayEvent[],
+  year: number,
+  month: number,
+  weatherByDate: Map<string, MaritimeDailyForecast>,
+  missingFlightDates: string[] = [],
+): DaySuitability[] {
+  const dates = getDaysInMonth(year, month)
+  const missingDateSet = new Set(missingFlightDates)
+
+  return dates.map((date) => {
+    const earlyTarget = makeBerthingTargetTime(date, EARLY_BERTHING_HOUR)
+    const standardTarget = makeBerthingTargetTime(date, STANDARD_BERTHING_HOUR)
+
+    const relevantEvents = events.filter((event) => {
+      const start = new Date(event.time)
+      const end = event.end_time ? new Date(event.end_time) : start
+      const dayStart = new Date(`${date}T00:00:00.000Z`)
+      const dayEnd = new Date(`${date}T23:59:59.999Z`)
+      return end >= dayStart && start <= dayEnd
+    })
+
+    const earlyBlockingEvents = relevantEvents.filter((event) => eventBlocksTarget(event, earlyTarget))
+    const standardBlockingEvents = relevantEvents.filter((event) => eventBlocksTarget(event, standardTarget))
+
+    const weather = weatherByDate.get(date)
+    const weatherSafety = weather
+      ? getWeatherSafetyStatus(weather)
+      : { isUnsafe: false, reasons: [] }
+    const weatherBlocked = weatherSafety.isUnsafe
+
+    const reasons: string[] = []
+    if (missingDateSet.has(date)) reasons.push('Missing flight coverage')
+    reasons.push(...weatherSafety.reasons)
+
+    if (weatherBlocked) {
+      return {
+        date,
+        color: 'red',
+        recommended_berthing_time: null,
+        has_early_berthing: false,
+        is_weather_blocked: true,
+        reasons: [...reasons, 'Weather safety block'],
+      }
+    }
+
+    if (earlyBlockingEvents.length === 0) {
+      return {
+        date,
+        color: 'green',
+        recommended_berthing_time: makeBerthingTargetTime(date, EARLY_BERTHING_HOUR).toISOString(),
+        has_early_berthing: true,
+        is_weather_blocked: false,
+        reasons: reasons.length ? reasons : ['Early berthing possible by 21:00'],
+      }
+    }
+
+    if (standardBlockingEvents.length === 0) {
+      return {
+        date,
+        color: 'orange',
+        recommended_berthing_time: makeBerthingTargetTime(date, STANDARD_BERTHING_HOUR).toISOString(),
+        has_early_berthing: false,
+        is_weather_blocked: false,
+        reasons: [...reasons, 'Traffic clears by 23:00 only'],
+      }
+    }
+
+    return {
+      date,
+      color: 'red',
+      recommended_berthing_time: null,
+      has_early_berthing: false,
+      is_weather_blocked: false,
+      reasons: [...reasons, 'No feasible berthing at/after 23:00'],
+    }
+  })
+}
+
 /**
  * Format a duration in hours to a human-readable string, e.g. "6h 30m".
  */
@@ -145,7 +330,7 @@ export function getDaysInMonth(year: number, month: number): string[] {
   const days: string[] = []
   const date = new Date(Date.UTC(year, month - 1, 1))
   while (date.getUTCMonth() === month - 1) {
-    days.push(date.toISOString().slice(0, 10))
+    days.push(getIsoDateString(date))
     date.setUTCDate(date.getUTCDate() + 1)
   }
   return days

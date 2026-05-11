@@ -1,16 +1,23 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { buildDayEvents, computeDischargeWindows, formatDuration } from '@/lib/shared-utils'
-import type { DayEvent } from '@/lib/types'
+import {
+  buildDayEvents,
+  computeDischargeWindows,
+  computeDailySuitability,
+  getMissingFlightDates,
+  formatDuration,
+} from '@/lib/shared-utils'
+import type { DayEvent, Flight, CruiseSchedule, FerrySchedule, OperationalEvent } from '@/lib/types'
 import { useTheme } from '@/contexts/ThemeContext'
 import { addDays, format, parseISO, subDays } from 'date-fns'
-import { ArrowLeft, ArrowRight, PlaneLanding, PlaneTakeoff, Ship, Clock, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, ArrowRight, PlaneLanding, PlaneTakeoff, Ship, Clock, TriangleAlert, FerrisWheel } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatTimeInZone } from '@/lib/utils'
 import { MaritimeWeatherWidget } from '@/components/portal/MaritimeWeatherWidget'
+import { fetchMaritimeForecast } from '@/lib/open-meteo'
 
 export default function DayDetailPage() {
   const params = useParams()
@@ -19,6 +26,8 @@ export default function DayDetailPage() {
   const { settings } = useTheme()
   const [events, setEvents] = useState<DayEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [suitabilityReasons, setSuitabilityReasons] = useState<string[]>([])
+  const [suitabilityColor, setSuitabilityColor] = useState<'green' | 'orange' | 'red' | null>(null)
 
   const minHours = settings?.min_discharge_window_hours ?? 4
 
@@ -30,7 +39,13 @@ export default function DayDetailPage() {
     const start = `${format(selectedDay, 'yyyy-MM-dd')}T00:00:00.000Z`
     const end = `${format(nextDay, 'yyyy-MM-dd')}T23:59:59.999Z`
 
-    const [{ data: flightData }, { data: cruiseData }] = await Promise.all([
+    const [
+      { data: flightData },
+      { data: cruiseData },
+      { data: ferryData },
+      { data: opData },
+      weatherData,
+    ] = await Promise.all([
       supabase
         .from('flights')
         .select('*')
@@ -42,10 +57,37 @@ export default function DayDetailPage() {
         .select('*')
         .or(`and(arrival_date.gte.${start},arrival_date.lte.${end}),and(departure_date.gte.${start},departure_date.lte.${end})`)
         .order('arrival_date'),
+      supabase
+        .from('ferries')
+        .select('*')
+        .or(`and(arrival_time.gte.${start},arrival_time.lte.${end}),and(departure_time.gte.${start},departure_time.lte.${end})`)
+        .order('arrival_time'),
+      supabase
+        .from('operational_events')
+        .select('*')
+        .or(`and(start_time.gte.${start},start_time.lte.${end}),and(end_time.gte.${start},end_time.lte.${end})`)
+        .order('start_time'),
+      fetchMaritimeForecast(14),
     ])
 
-    const dayEvents = buildDayEvents(flightData ?? [], cruiseData ?? [])
+    const flights = (flightData ?? []) as Flight[]
+    const cruises = (cruiseData ?? []) as CruiseSchedule[]
+    const ferries = (ferryData ?? []) as FerrySchedule[]
+    const opEvents = (opData ?? []) as OperationalEvent[]
+
+    const dayEvents = buildDayEvents(flights, cruises, ferries, opEvents)
     setEvents(dayEvents)
+
+    const suitability = computeDailySuitability(
+      dayEvents,
+      selectedDay.getUTCFullYear(),
+      selectedDay.getUTCMonth() + 1,
+      new Map(weatherData.map((day) => [day.date, day])),
+      getMissingFlightDates(flights, selectedDay.getUTCFullYear(), selectedDay.getUTCMonth() + 1),
+    ).find((item) => item.date === date)
+
+    setSuitabilityReasons(suitability?.reasons ?? [])
+    setSuitabilityColor(suitability?.color ?? null)
     setLoading(false)
   }, [date])
 
@@ -53,7 +95,6 @@ export default function DayDetailPage() {
     fetchData()
   }, [fetchData])
 
-  // Compute windows just for this day's events
   const allYear = date ? parseInt(date.slice(0, 4)) : new Date().getFullYear()
   const allMonth = date ? parseInt(date.slice(5, 7)) : new Date().getMonth() + 1
   const windows = computeDischargeWindows(events, allYear, allMonth, minHours)
@@ -75,6 +116,13 @@ export default function DayDetailPage() {
       format(eventDate, 'yyyy-MM-dd') === format(nextDay, 'yyyy-MM-dd')
     )
   })
+
+  const suitabilityClass = useMemo(() => {
+    if (suitabilityColor === 'green') return 'border-emerald-200 bg-emerald-50 text-emerald-900'
+    if (suitabilityColor === 'orange') return 'border-amber-200 bg-amber-50 text-amber-900'
+    if (suitabilityColor === 'red') return 'border-red-200 bg-red-50 text-red-900'
+    return 'border-gray-200 bg-gray-50 text-gray-700'
+  }, [suitabilityColor])
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -114,7 +162,24 @@ export default function DayDetailPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Events timeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Suitability decision reasons</CardTitle>
+            </CardHeader>
+            <div className={`rounded-lg border p-3 text-sm ${suitabilityClass}`}>
+              <p className="font-semibold">Status: {(suitabilityColor ?? 'unknown').toUpperCase()}</p>
+              {suitabilityReasons.length === 0 ? (
+                <p className="text-xs">No specific reason code generated for this date.</p>
+              ) : (
+                <ul className="mt-2 space-y-1 text-xs">
+                  {suitabilityReasons.map((reason) => (
+                    <li key={reason}>• {reason}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Events (2-day hourly timeline)</CardTitle>
@@ -167,29 +232,11 @@ export default function DayDetailPage() {
                 {events.map((event) => (
                   <li key={event.id} className="flex items-start gap-3">
                     <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
-                      {event.type === 'flight' ? (event.flight_direction === 'departure' ? <PlaneTakeoff size={12} /> : <PlaneLanding size={12} />) : <Ship size={12} />}
+                      {event.type === 'flight' ? (event.flight_direction === 'departure' ? <PlaneTakeoff size={12} /> : <PlaneLanding size={12} />) : event.type === 'ferry' ? <FerrisWheel size={12} /> : <Ship size={12} />}
                     </span>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{event.title}</p>
-                      <p className="text-xs text-gray-400">
-                        {event.type === 'flight' ? (
-                          <>
-                            {event.flight_direction === 'departure'
-                              ? `Scheduled departure: ${event.scheduled_departure ? formatTimeInZone(event.scheduled_departure) : '—'}`
-                              : `Scheduled arrival: ${formatTimeInZone(event.scheduled_arrival ?? event.time)}`}
-                          </>
-                        ) : (
-                          <>
-                            {event.cruise_direction === 'departure' ? 'Scheduled departure: ' : 'Scheduled arrival: '}
-                            {formatTimeInZone(event.time)}
-                          </>
-                        )}
-                        {event.is_private && (
-                          <span className="ml-2 rounded bg-gray-100 px-1 py-0.5 text-gray-500">
-                            Private
-                          </span>
-                        )}
-                      </p>
+                      <p className="text-xs text-gray-400">{formatTimeInZone(event.time)}</p>
                       {event.type === 'flight' && event.delay_minutes && event.delay_minutes > 0 && (
                         <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-red-600">
                           <TriangleAlert size={12} /> Delayed by {event.delay_minutes} min
@@ -202,7 +249,6 @@ export default function DayDetailPage() {
             )}
           </Card>
 
-          {/* Discharge windows */}
           <Card>
             <CardHeader>
               <CardTitle>Discharge Windows</CardTitle>

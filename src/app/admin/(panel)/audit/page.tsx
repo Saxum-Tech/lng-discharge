@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { AuditLog } from '@/lib/types'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-import { format, parseISO } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { formatAuditDateTime } from '@/lib/utils'
 
 const PAGE_SIZE = 50
 
@@ -80,7 +80,7 @@ export default function AuditLogPage() {
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50">
                     <td className="py-2.5 pr-4 text-gray-500 whitespace-nowrap">
-                      {format(parseISO(log.created_at), 'dd MMM yyyy HH:mm:ss')}
+                      {formatAuditDateTime(log.created_at)}
                     </td>
                     <td className="py-2.5 pr-4 text-gray-700">
                       {(log.profile as { full_name?: string } | null)?.full_name ??

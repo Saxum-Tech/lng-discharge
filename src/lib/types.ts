@@ -77,6 +77,59 @@ export interface CruiseSchedule {
   updated_at: string
 }
 
+export interface FerrySchedule {
+  id: string
+  company_id: string
+  ferry_name: string
+  service_route: string | null
+  arrival_time: string
+  departure_time: string | null
+  is_private: boolean
+  notes: string | null
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export type OperationalEventType = 'private_flight' | 'ferry' | 'port_constraint' | 'other'
+
+export interface OperationalEvent {
+  id: string
+  company_id: string
+  event_type: OperationalEventType
+  title: string
+  start_time: string
+  end_time: string | null
+  blocks_discharge: boolean
+  is_private: boolean
+  notes: string | null
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export type PlannedDischargeStatus =
+  | 'planned'
+  | 'confirmed'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+
+export interface PlannedDischarge {
+  id: string
+  company_id: string
+  discharge_date: string
+  alongside_target_at: string
+  vessel_name: string
+  approx_quantity_m3: number
+  status: PlannedDischargeStatus
+  notes: string | null
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface AuditLog {
   id: string
   user_id: string
@@ -103,7 +156,7 @@ export interface DischargeWindow {
 
 export interface DayEvent {
   id: string
-  type: 'flight' | 'cruise'
+  type: 'flight' | 'cruise' | 'ferry' | 'operational'
   title: string
   time: string // ISO timestamp
   end_time?: string
@@ -115,6 +168,18 @@ export interface DayEvent {
   company_id: string
   notes?: string | null
   delay_minutes?: number | null
+  blocks_discharge?: boolean
+}
+
+export type SuitabilityColor = 'green' | 'orange' | 'red'
+
+export interface DaySuitability {
+  date: string
+  color: SuitabilityColor
+  recommended_berthing_time: string | null
+  has_early_berthing: boolean
+  is_weather_blocked: boolean
+  reasons: string[]
 }
 
 // ─── API / Form types ─────────────────────────────────────────────────────
@@ -127,6 +192,24 @@ export type CreateCruisePayload = Omit<
   'id' | 'created_by' | 'created_at' | 'updated_at'
 >
 export type UpdateCruisePayload = Partial<CreateCruisePayload>
+
+export type CreateFerryPayload = Omit<
+  FerrySchedule,
+  'id' | 'created_by' | 'created_at' | 'updated_at'
+>
+export type UpdateFerryPayload = Partial<CreateFerryPayload>
+
+export type CreateOperationalEventPayload = Omit<
+  OperationalEvent,
+  'id' | 'created_by' | 'created_at' | 'updated_at'
+>
+export type UpdateOperationalEventPayload = Partial<CreateOperationalEventPayload>
+
+export type CreatePlannedDischargePayload = Omit<
+  PlannedDischarge,
+  'id' | 'created_by' | 'created_at' | 'updated_at' | 'updated_by'
+>
+export type UpdatePlannedDischargePayload = Partial<CreatePlannedDischargePayload>
 
 export type UpdateAppSettingsPayload = Partial<Omit<AppSettings, 'id' | 'updated_at'>>
 
