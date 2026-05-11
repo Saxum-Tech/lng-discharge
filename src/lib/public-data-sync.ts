@@ -634,7 +634,6 @@ function compareAirportHtmlAndApiFlights(
   const missingInHtml = apiWindow.filter((flight) => !htmlKeys.has(flightKey(flight)))
 
   const warnings: string[] = []
-  const requestId = options?.requestId ?? 'n/a'
   if (missingInApi.length > 0) {
     warnings.push(
       `Website/API mismatch (next ${days} days): ${missingInApi.length} flights found on Gibraltar website but not in API results.`,
