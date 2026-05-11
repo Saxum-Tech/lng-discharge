@@ -39,7 +39,12 @@ export type PublicDataSyncSummary = {
   cruises_updated: number
   cruises_skipped: number
   warnings: string[]
+  flights_marked_for_reconfirm: number
+  cruises_marked_for_reconfirm: number
 }
+
+const SYNCED_NOTE = 'Synced from public source'
+const RECONFIRM_PREFIX = '[RECONFIRM] '
 
 const MONTH_INDEX: Record<string, string> = {
   jan: '01',
@@ -748,12 +753,15 @@ async function syncFlights(
   admin: SupabaseClient,
   owner: SyncOwner,
   flights: ParsedFlight[],
-): Promise<{ inserted: number; updated: number; skipped: number }> {
+): Promise<{ inserted: number; updated: number; skipped: number; markedForReconfirm: number }> {
   let inserted = 0
   let updated = 0
   let skipped = 0
+  let markedForReconfirm = 0
+  const seenKeys = new Set<string>()
 
   for (const flight of flights) {
+    seenKeys.add(`${flight.flight_number}|${flight.origin}|${flight.destination}|${flight.scheduled_arrival}`)
     const { data: existing, error: lookupError } = await admin
       .from('flights')
       .select('id, scheduled_departure, aircraft_type, passenger_count, notes')
@@ -806,19 +814,43 @@ async function syncFlights(
     updated += 1
   }
 
-  return { inserted, updated, skipped }
+  const nowIso = new Date().toISOString()
+  const { data: existingSynced, error: existingSyncedError } = await admin
+    .from('flights')
+    .select('id, flight_number, origin, destination, scheduled_arrival, notes')
+    .eq('company_id', owner.companyId)
+    .eq('is_private', false)
+    .gte('scheduled_arrival', nowIso)
+
+  if (existingSyncedError) throw existingSyncedError
+
+  for (const existing of existingSynced ?? []) {
+    const key = `${existing.flight_number}|${existing.origin}|${existing.destination}|${existing.scheduled_arrival}`
+    if (seenKeys.has(key)) continue
+    if (existing.notes?.includes(RECONFIRM_PREFIX)) continue
+
+    const nextNotes = `${RECONFIRM_PREFIX}Possible deletion/change from public source. Please reconfirm before manual delete. ${SYNCED_NOTE}`
+    const { error: updateError } = await admin.from('flights').update({ notes: nextNotes }).eq('id', existing.id)
+    if (updateError) throw updateError
+    markedForReconfirm += 1
+  }
+
+  return { inserted, updated, skipped, markedForReconfirm }
 }
 
 async function syncCruises(
   admin: SupabaseClient,
   owner: SyncOwner,
   cruises: ParsedCruise[],
-): Promise<{ inserted: number; updated: number; skipped: number }> {
+): Promise<{ inserted: number; updated: number; skipped: number; markedForReconfirm: number }> {
   let inserted = 0
   let updated = 0
   let skipped = 0
+  let markedForReconfirm = 0
+  const seenKeys = new Set<string>()
 
   for (const cruise of cruises) {
+    seenKeys.add(`${cruise.vessel_name}|${cruise.arrival_date}`)
     const { data: existing, error: lookupError } = await admin
       .from('cruise_schedules')
       .select('id, departure_date, vessel_type, passenger_count, notes')
@@ -869,7 +901,31 @@ async function syncCruises(
     updated += 1
   }
 
-  return { inserted, updated, skipped }
+  const nowIso = new Date().toISOString()
+  const { data: existingSynced, error: existingSyncedError } = await admin
+    .from('cruise_schedules')
+    .select('id, vessel_name, arrival_date, notes')
+    .eq('company_id', owner.companyId)
+    .eq('is_private', false)
+    .gte('arrival_date', nowIso)
+
+  if (existingSyncedError) throw existingSyncedError
+
+  for (const existing of existingSynced ?? []) {
+    const key = `${existing.vessel_name}|${existing.arrival_date}`
+    if (seenKeys.has(key)) continue
+    if (existing.notes?.includes(RECONFIRM_PREFIX)) continue
+
+    const nextNotes = `${RECONFIRM_PREFIX}Possible deletion/change from public source. Please reconfirm before manual delete. ${SYNCED_NOTE}`
+    const { error: updateError } = await admin
+      .from('cruise_schedules')
+      .update({ notes: nextNotes })
+      .eq('id', existing.id)
+    if (updateError) throw updateError
+    markedForReconfirm += 1
+  }
+
+  return { inserted, updated, skipped, markedForReconfirm }
 }
 
 export async function runPublicDataSync(
@@ -965,9 +1021,11 @@ export async function runPublicDataSync(
     flights_inserted: flightResults.inserted,
     flights_updated: flightResults.updated,
     flights_skipped: flightResults.skipped,
+    flights_marked_for_reconfirm: flightResults.markedForReconfirm,
     cruises_inserted: cruiseResults.inserted,
     cruises_updated: cruiseResults.updated,
     cruises_skipped: cruiseResults.skipped,
+    cruises_marked_for_reconfirm: cruiseResults.markedForReconfirm,
     warnings,
   }
 }
