@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { addDays, format, isAfter, parseISO, startOfDay } from 'date-fns'
-import { fetchMaritimeForecast, type MaritimeDailyForecast, PORT_COORDINATES } from '@/lib/open-meteo'
+import {
+  fetchMaritimeForecast,
+  degreesToArrow,
+  getWeatherPresentation,
+  type MaritimeDailyForecast,
+  PORT_COORDINATES,
+} from '@/lib/open-meteo'
 
 type MaritimeWeatherWidgetProps = {
   selectedDate?: string
@@ -76,13 +82,16 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
     return 'No weather data available for this selected date in the current forecast window.'
   }, [selectedDate, loading, error, highlightedDay])
 
+  const shortForecast = forecast.slice(0, 7)
+  const adverseDays = forecast.filter((day) => getWeatherPresentation(day.weatherCode).isAdverse)
+
   return (
     <section className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Maritime Weather (Next 14 Days)</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Maritime Weather</h2>
           <p className="text-xs text-gray-500">
-            Open-Meteo forecast for {PORT_COORDINATES.latitude.toFixed(6)}, {PORT_COORDINATES.longitude.toFixed(6)}. Refreshes hourly on the hour.
+            7-day compact view + 14-day alert coverage for {PORT_COORDINATES.latitude.toFixed(6)}, {PORT_COORDINATES.longitude.toFixed(6)}.
           </p>
         </div>
       </div>
@@ -97,42 +106,33 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
             <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
               <p className="font-medium">{format(parseISO(highlightedDay.date), 'EEEE, d MMM yyyy')}</p>
               <p>
-                Wind {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn), wave height {formatNumber(highlightedDay.waveHeightMax)} m.
+                {getWeatherPresentation(highlightedDay.weatherCode).icon} {getWeatherPresentation(highlightedDay.weatherCode).label} · Wind {degreesToArrow(highlightedDay.windDirectionDominant)} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn), wave {degreesToArrow(highlightedDay.waveDirectionDominant)} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
               </p>
             </div>
           )}
 
-          {selectedDayMessage && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              {selectedDayMessage}
+          {selectedDayMessage && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{selectedDayMessage}</div>}
+
+          {adverseDays.length > 0 && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <span className="font-semibold">Adverse weather watch:</span> {adverseDays.map((day) => format(parseISO(day.date), 'dd MMM')).join(', ')}
             </div>
           )}
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-xs">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-2 py-2">Day</th>
-                  <th className="px-2 py-2">Wind max (kn)</th>
-                  <th className="px-2 py-2">Gust max (kn)</th>
-                  <th className="px-2 py-2">Swell / wave max (m)</th>
-                  <th className="px-2 py-2">Wave period max (s)</th>
-                  <th className="px-2 py-2">Wave dir (°)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {forecast.map((day) => (
-                  <tr key={day.date} className={`border-b border-gray-100 ${selectedDate === day.date ? 'bg-blue-50' : ''}`}>
-                    <td className="px-2 py-2 font-medium text-gray-700">{format(parseISO(day.date), 'EEE dd MMM')}</td>
-                    <td className="px-2 py-2">{formatNumber(day.windSpeedMax)}</td>
-                    <td className="px-2 py-2">{formatNumber(day.windGustsMax)}</td>
-                    <td className="px-2 py-2">{formatNumber(day.waveHeightMax)}</td>
-                    <td className="px-2 py-2">{formatNumber(day.wavePeriodMax)}</td>
-                    <td className="px-2 py-2">{formatNumber(day.waveDirectionDominant, 0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-7 gap-2">
+            {shortForecast.map((day) => {
+              const weather = getWeatherPresentation(day.weatherCode)
+              const isSelected = selectedDate === day.date
+              return (
+                <div key={day.date} className={`rounded-lg border p-2 text-center ${isSelected ? 'border-blue-300 bg-blue-50' : weather.isAdverse ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
+                  <p className="text-[11px] font-semibold text-gray-600">{format(parseISO(day.date), 'EEE dd')}</p>
+                  <p className="text-xl" aria-label={weather.label}>{weather.icon}</p>
+                  <p className="truncate text-[11px] text-gray-700">{weather.label}</p>
+                  <p className="text-[11px] text-gray-500">Wind {degreesToArrow(day.windDirectionDominant)} {formatNumber(day.windSpeedMax, 0)} kn</p>
+                  <p className="text-[11px] text-gray-500">Wave {degreesToArrow(day.waveDirectionDominant)} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s</p>
+                </div>
+              )
+            })}
           </div>
         </>
       )}
