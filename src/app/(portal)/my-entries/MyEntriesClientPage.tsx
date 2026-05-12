@@ -31,6 +31,7 @@ import {
 import { formatAuditDateTime } from '@/lib/utils'
 
 type EntryType = 'flight' | 'cruise' | 'ferry' | 'operational'
+type DateFilter = 'all' | 'day' | 'week' | 'month'
 
 type UserLabelMap = Record<string, string>
 
@@ -234,6 +235,7 @@ export default function MyEntriesClientPage() {
               createdBy: f.created_by,
               createdAt: f.created_at,
               updatedAt: f.updated_at,
+              filterDate: f.scheduled_departure ?? f.scheduled_arrival,
               type: 'flight' as EntryType,
             }))}
             onEdit={(id) => {
@@ -257,6 +259,7 @@ export default function MyEntriesClientPage() {
               createdBy: c.created_by,
               createdAt: c.created_at,
               updatedAt: c.updated_at,
+              filterDate: c.departure_date ?? c.arrival_date,
               type: 'cruise' as EntryType,
             }))}
             onEdit={(id) => {
@@ -280,6 +283,7 @@ export default function MyEntriesClientPage() {
               createdBy: f.created_by,
               createdAt: f.created_at,
               updatedAt: f.updated_at,
+              filterDate: f.departure_time ?? f.arrival_time,
               type: 'ferry' as EntryType,
             }))}
             onEdit={(id) => {
@@ -303,6 +307,7 @@ export default function MyEntriesClientPage() {
               createdBy: evt.created_by,
               createdAt: evt.created_at,
               updatedAt: evt.updated_at,
+              filterDate: evt.end_time ?? evt.start_time,
               type: 'operational' as EntryType,
             }))}
             onEdit={(id) => {
@@ -352,12 +357,53 @@ function EntryList({
     createdAt: string
     updatedAt: string
     type: EntryType
+    filterDate: string
   }>
   onEdit: (id: string) => void
   onDelete: (id: string) => void
   userLabels: UserLabelMap
   currentUserId: string | null
 }) {
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
+  const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
+
+  const filteredRows = useMemo(() => {
+    const now = new Date()
+    const lowerQuery = query.trim().toLowerCase()
+
+    return rows.filter((row) => {
+      const eventDate = parseISO(row.filterDate)
+      let matchesDate = true
+      if (dateFilter === 'day') {
+        const threshold = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+        matchesDate = eventDate >= threshold
+      } else if (dateFilter === 'week') {
+        const threshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        matchesDate = eventDate >= threshold
+      } else if (dateFilter === 'month') {
+        const threshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        matchesDate = eventDate >= threshold
+      }
+
+      const matchesQuery =
+        !lowerQuery ||
+        row.heading.toLowerCase().includes(lowerQuery) ||
+        row.schedule.toLowerCase().includes(lowerQuery) ||
+        displayActorName(row.createdBy, userLabels, currentUserId).toLowerCase().includes(lowerQuery)
+
+      return matchesDate && matchesQuery
+    })
+  }, [rows, dateFilter, query, userLabels, currentUserId])
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / 100))
+  const safePage = Math.min(page, totalPages)
+  const pagedRows = filteredRows.slice((safePage - 1) * 100, safePage * 100)
+
+  useEffect(() => {
+    setPage(1)
+  }, [dateFilter, query, rows.length])
+
   return (
     <Card>
       <CardHeader>
@@ -367,11 +413,34 @@ function EntryList({
           </span>
         </CardTitle>
       </CardHeader>
-      {rows.length === 0 ? (
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium uppercase tracking-wide text-gray-500">Range</label>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
+          >
+            <option value="all">All</option>
+            <option value="day">Last day</option>
+            <option value="week">Last week</option>
+            <option value="month">Last month</option>
+          </select>
+        </div>
+        <div className="min-w-[220px] flex-1">
+          <Input
+            label="Search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search heading, schedule, user..."
+          />
+        </div>
+      </div>
+      {filteredRows.length === 0 ? (
         <p className="text-sm text-gray-400">No entries yet.</p>
       ) : (
         <div className="divide-y divide-gray-100">
-          {rows.map((row) => (
+          {pagedRows.map((row) => (
             <div key={row.id} className="flex items-center justify-between py-3">
               <div>
                 <p className="font-medium text-gray-900">{row.heading}</p>
@@ -401,6 +470,27 @@ function EntryList({
               </div>
             </div>
           ))}
+          <div className="flex items-center justify-between py-3 text-sm text-gray-600">
+            <p>
+              Showing {(safePage - 1) * 100 + 1}-{Math.min(safePage * 100, filteredRows.length)} of {filteredRows.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                Prev
+              </Button>
+              <span>
+                Page {safePage} / {totalPages}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={safePage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </Card>
