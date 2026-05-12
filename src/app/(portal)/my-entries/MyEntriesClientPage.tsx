@@ -27,6 +27,8 @@ import {
   X,
   FerrisWheel,
   ClipboardList,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { formatAuditDateTime } from '@/lib/utils'
 
@@ -34,6 +36,7 @@ type EntryType = 'flight' | 'cruise' | 'ferry' | 'operational'
 type DateFilter = 'all' | 'today' | 'this_month' | 'next_month'
 
 type UserLabelMap = Record<string, string>
+type SectionKey = 'flights' | 'cruises' | 'ferries' | 'operational'
 
 const EVENT_TYPE_OPTIONS: OperationalEventType[] = ['private_flight', 'ferry', 'port_constraint', 'other']
 
@@ -60,6 +63,12 @@ export default function MyEntriesClientPage() {
   const [editItem, setEditItem] = useState<Flight | CruiseSchedule | FerrySchedule | OperationalEvent | null>(null)
   const [entryType, setEntryType] = useState<EntryType>('flight')
   const [userLabels, setUserLabels] = useState<UserLabelMap>({})
+  const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
+    flights: true,
+    cruises: true,
+    ferries: true,
+    operational: true,
+  })
   const queryHandledRef = useRef(false)
 
   const companyId = profile?.company_id
@@ -187,6 +196,10 @@ export default function MyEntriesClientPage() {
     setShowModal(true)
   }
 
+  function toggleSection(section: SectionKey) {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
+  }
+
   const counts = useMemo(
     () => ({
       flights: flights.length,
@@ -245,6 +258,8 @@ export default function MyEntriesClientPage() {
             onDelete={(id) => deleteEntry('flight', id)}
             userLabels={userLabels}
             currentUserId={user?.id ?? null}
+            isExpanded={expandedSections.flights}
+            onToggle={() => toggleSection('flights')}
           />
 
           <EntryList
@@ -269,6 +284,8 @@ export default function MyEntriesClientPage() {
             onDelete={(id) => deleteEntry('cruise', id)}
             userLabels={userLabels}
             currentUserId={user?.id ?? null}
+            isExpanded={expandedSections.cruises}
+            onToggle={() => toggleSection('cruises')}
           />
 
           <EntryList
@@ -293,6 +310,8 @@ export default function MyEntriesClientPage() {
             onDelete={(id) => deleteEntry('ferry', id)}
             userLabels={userLabels}
             currentUserId={user?.id ?? null}
+            isExpanded={expandedSections.ferries}
+            onToggle={() => toggleSection('ferries')}
           />
 
           <EntryList
@@ -317,6 +336,8 @@ export default function MyEntriesClientPage() {
             onDelete={(id) => deleteEntry('operational', id)}
             userLabels={userLabels}
             currentUserId={user?.id ?? null}
+            isExpanded={expandedSections.operational}
+            onToggle={() => toggleSection('operational')}
           />
         </div>
       )}
@@ -346,6 +367,8 @@ function EntryList({
   onDelete,
   userLabels,
   currentUserId,
+  isExpanded,
+  onToggle,
 }: {
   title: string
   icon: React.ReactNode
@@ -363,6 +386,8 @@ function EntryList({
   onDelete: (id: string) => void
   userLabels: UserLabelMap
   currentUserId: string | null
+  isExpanded: boolean
+  onToggle: () => void
 }) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [query, setQuery] = useState('')
@@ -411,12 +436,25 @@ function EntryList({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          <span className="flex items-center gap-2">
-            {icon} {title}
-          </span>
-        </CardTitle>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex w-full items-center justify-between gap-3 text-left"
+          aria-expanded={isExpanded}
+        >
+          <CardTitle>
+            <span className="flex items-center gap-2">
+              {icon} {title}
+            </span>
+          </CardTitle>
+          {isExpanded ? <ChevronUp size={18} className="text-gray-500" /> : <ChevronDown size={18} className="text-gray-500" />}
+        </button>
       </CardHeader>
+
+      {!isExpanded ? (
+        <p className="px-6 pb-4 text-sm text-gray-500">Section collapsed. Expand to browse entries.</p>
+      ) : (
+        <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <label className="text-xs font-medium uppercase tracking-wide text-gray-500">Range</label>
@@ -497,6 +535,8 @@ function EntryList({
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </Card>
   )
