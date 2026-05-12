@@ -1,15 +1,49 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import type { UserRole } from '@/lib/types'
 
-const ALLOWED_ROLES: UserRole[] = ['superadmin', 'company_admin', 'viewer']
+const invitePayloadSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email('Please enter a valid email address.'),
+    fullName: z.string().trim().min(1, 'Full name is required.'),
+    role: z.enum(['superadmin', 'company_admin', 'viewer'], {
+      errorMap: () => ({ message: 'Role must be one of: superadmin, company_admin, viewer.' }),
+    }),
+    companyId: z.string().trim().nullable().optional(),
+  })
+  .superRefine((payload, ctx) => {
+    if (payload.role === 'superadmin') {
+      if (payload.companyId !== null && payload.companyId !== undefined && payload.companyId !== '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['companyId'],
+          message: 'Superadmin invites must not include a company.',
+        })
+      }
+      return
+    }
 
-type InvitePayload = {
-  email?: string
-  fullName?: string
-  role?: UserRole
-  companyId?: string | null
+    if (!payload.companyId || payload.companyId.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['companyId'],
+        message: 'Company is required for company_admin and viewer roles.',
+      })
+    }
+  })
+
+function formatValidationErrors(issues: z.ZodIssue[]) {
+  const fieldErrors = issues.reduce<Record<string, string[]>>((acc, issue) => {
+    const field = issue.path[0]?.toString() ?? 'form'
+    acc[field] = [...(acc[field] ?? []), issue.message]
+    return acc
+  }, {})
+
+  return {
+    error: 'Invalid invite payload.',
+    fields: fieldErrors,
+  }
 }
 
 async function isSuperadminBearer(authHeader: string | null) {
@@ -49,19 +83,42 @@ export async function POST(request: Request) {
     const authorized = await isSuperadminBearer(request.headers.get('authorization'))
     if (!authorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = (await request.json()) as InvitePayload
-    const email = body.email?.trim().toLowerCase()
-    const fullName = body.fullName?.trim()
-    const role = body.role
-    const companyId = body.companyId?.trim() || null
+    const body = await request.json()
+    const parsed = invitePayloadSchema.safeParse(body)
 
-    if (!email || !fullName || !role || !ALLOWED_ROLES.includes(role)) {
-      return NextResponse.json({ error: 'Invalid invite payload.' }, { status: 400 })
+    if (!parsed.success) {
+      return NextResponse.json(formatValidationErrors(parsed.error.issues), { status: 400 })
     }
 
+    const email = parsed.data.email
+    const fullName = parsed.data.fullName
+    const role = parsed.data.role
+    const companyId = parsed.data.companyId?.trim() || null
+
     const admin = createSupabaseAdminClient()
+
+    if (role === 'company_admin' || role === 'viewer') {
+      const { data: company, error: companyError } = await admin
+        .from('companies')
+        .select('id, is_active')
+        .eq('id', companyId)
+        .single()
+
+      if (companyError || !company || company.is_active !== true) {
+        return NextResponse.json(
+          {
+            error: 'Invalid invite payload.',
+            fields: {
+              companyId: ['Selected company does not exist or is inactive.'],
+            },
+          },
+          { status: 400 },
+        )
+      }
+    }
+
     const { error } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName, role, company_id: companyId },
+      data: { full_name: fullName, role, company_id: role === 'superadmin' ? null : companyId },
     })
 
     if (error) {
