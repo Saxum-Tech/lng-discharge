@@ -17,14 +17,48 @@ export default function AuditLogPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('audit_logs')
-      .select('*, profile:profiles(full_name, role)')
+      .select('*')
       .order('created_at', { ascending: false })
       .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+
+    if (error) {
+      console.error('Failed to load audit logs:', error)
+      setLogs([])
+      setHasMore(false)
+      setLoading(false)
+      return
+    }
+
     const rows = data ?? []
-    setLogs(rows)
-    setHasMore(rows.length === PAGE_SIZE)
+    const userIds = Array.from(new Set(rows.map((row) => row.user_id).filter(Boolean)))
+    let profileByUserId = new Map<string, { full_name?: string | null; role?: string | null }>()
+
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, role')
+        .in('user_id', userIds)
+
+      if (profilesError) {
+        console.error('Failed to load audit log profiles:', profilesError)
+      } else {
+        profileByUserId = new Map(
+          (profiles ?? []).map((profile) => [
+            profile.user_id,
+            { full_name: profile.full_name, role: profile.role },
+          ]),
+        )
+      }
+    }
+
+    const rowsWithProfiles = rows.map((row) => ({
+      ...row,
+      profile: row.user_id ? profileByUserId.get(row.user_id) ?? null : null,
+    }))
+    setLogs(rowsWithProfiles)
+    setHasMore(rowsWithProfiles.length === PAGE_SIZE)
     setLoading(false)
   }, [page])
 
