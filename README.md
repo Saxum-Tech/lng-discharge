@@ -90,7 +90,8 @@ The app can ingest public schedule data into `cruise_schedules` and `flights` vi
 
 - `POST /api/sync/public-data` (manual trigger from Admin → System Settings)
 - A cron trigger using `Authorization: Bearer ${SYNC_CRON_TOKEN}`
-- Vercel cron is configured in `vercel.json` to run daily at midnight UTC (`0 0 * * *`)
+- Vercel cron is configured in `vercel.json` to run daily at noon UTC (`0 12 * * *`).
+- Schedule is defined strictly in UTC; local execution time will shift with timezone and DST changes.
 
 Configure these environment variables:
 
