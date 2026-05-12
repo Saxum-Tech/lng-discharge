@@ -73,6 +73,15 @@ export function getWeatherPresentation(code: number | null) {
   return { label: 'Cloudy', icon: '☁️', isAdverse: false }
 }
 
+
+export function degreesToCardinal(degrees: number | null) {
+  if (degrees == null || Number.isNaN(degrees)) return null
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+  const normalized = ((degrees % 360) + 360) % 360
+  const index = Math.round(normalized / 45) % 8
+  return directions[index]
+}
+
 export function degreesToArrow(degrees: number | null) {
   if (degrees == null || Number.isNaN(degrees)) return '•'
   const arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']

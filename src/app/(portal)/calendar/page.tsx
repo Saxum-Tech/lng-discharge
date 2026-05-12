@@ -25,7 +25,7 @@ import type {
 } from '@/lib/types'
 import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { MaritimeWeatherWidget } from '@/components/portal/MaritimeWeatherWidget'
-import { degreesToArrow, fetchMaritimeForecast, fetchMaritimeHourlyForecast, type MaritimeDailyForecast, type MaritimeHourlyForecast } from '@/lib/open-meteo'
+import { degreesToArrow, degreesToCardinal, fetchMaritimeForecast, fetchMaritimeHourlyForecast, type MaritimeDailyForecast, type MaritimeHourlyForecast } from '@/lib/open-meteo'
 import { formatAuditDateTime } from '@/lib/utils'
 import {
   addDays,
@@ -458,7 +458,20 @@ export default function CalendarPage() {
                   return Array.from({ length: 24 }).map((_, h) => {
                     const row = rows.find((r) => r.hour === h)
                     const raw = row ? row[metric.key] : null
-                    const value = metric.arrow ? degreesToArrow(raw as number | null) : raw == null ? '—' : (raw as number).toFixed(metric.digits ?? 0)
+                    if (metric.arrow) {
+                      const arrow = degreesToArrow(raw as number | null)
+                      const direction = degreesToCardinal(raw as number | null)
+                      return (
+                        <div
+                          key={`${day}-${metric.label}-${h}`}
+                          className="border-r border-gray-100 px-1 py-1 text-center text-base text-gray-700 last:border-r-0"
+                          title={direction ?? 'No direction data'}
+                        >
+                          {arrow}
+                        </div>
+                      )
+                    }
+                    const value = raw == null ? '—' : (raw as number).toFixed(metric.digits ?? 0)
                     return <div key={`${day}-${metric.label}-${h}`} className="border-r border-gray-100 px-1 py-1 text-center text-gray-700 last:border-r-0">{value}</div>
                   })
                 })}
