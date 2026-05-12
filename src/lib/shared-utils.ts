@@ -24,7 +24,7 @@ export function buildUnifiedDayEvents(
   operationalEvents: OperationalEvent[] = [],
 ): DayEvent[] {
   const cruiseEvents: DayEvent[] = cruises.flatMap((c) => {
-    const vesselLabel = `🚢 ${c.vessel_name}${c.vessel_type ? ` (${c.vessel_type})` : ''}`
+    const vesselLabel = `${c.vessel_name}${c.vessel_type ? ` (${c.vessel_type})` : ''}`
     const arrivals: DayEvent[] = [
       {
         id: `${c.id}:arrival`,
@@ -60,7 +60,7 @@ export function buildUnifiedDayEvents(
       {
         id: `${f.id}:arrival`,
         type: 'ferry',
-        title: `⛴ ${f.ferry_name} — Arrival`,
+        title: `${f.ferry_name} — Arrival`,
         time: f.arrival_time,
         is_private: f.is_private,
         company_id: f.company_id,
@@ -77,7 +77,7 @@ export function buildUnifiedDayEvents(
       {
         id: `${f.id}:departure`,
         type: 'ferry',
-        title: `⛴ ${f.ferry_name} — Departure`,
+        title: `${f.ferry_name} — Departure`,
         time: f.departure_time,
         is_private: f.is_private,
         company_id: f.company_id,
@@ -91,7 +91,7 @@ export function buildUnifiedDayEvents(
   const manualEvents: DayEvent[] = operationalEvents.map((event) => ({
     id: event.id,
     type: 'operational',
-    title: `📌 ${event.title}`,
+    title: `${event.title}`,
     time: event.start_time,
     end_time: event.end_time ?? undefined,
     is_private: event.is_private,
@@ -112,7 +112,7 @@ export function buildUnifiedDayEvents(
         return {
           id: f.id,
           type: 'flight',
-          title: `✈ ${f.flight_number} — ${isDepartureFlight ? 'Departure' : 'Arrival'}`,
+          title: `${f.flight_number} — ${isDepartureFlight ? 'Departure' : 'Arrival'}`,
           time: primaryTime,
           end_time: f.scheduled_departure ?? undefined,
           flight_direction: isDepartureFlight ? 'departure' : 'arrival',

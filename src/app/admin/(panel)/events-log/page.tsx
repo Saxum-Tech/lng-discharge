@@ -5,7 +5,7 @@ import { addMonths, endOfMonth, format, parseISO, startOfMonth, subMonths } from
 import { supabase } from '@/lib/supabase'
 import type { CruiseSchedule, DayEvent, FerrySchedule, Flight, OperationalEvent, OperationalEventType, PlannedDischarge } from '@/lib/types'
 import { buildDayEvents } from '@/lib/shared-utils'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Eye, EyeOff } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Eye, EyeOff, Fuel } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 const EVENT_TYPES: OperationalEventType[] = ['private_flight', 'ferry', 'port_constraint', 'other']
@@ -228,7 +228,7 @@ export default function EventsLogPage() {
                 {plannedForDay.map((discharge) => (
                   <div key={`discharge-${discharge.id}`} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
                     <div className="flex-1">
-                      <p className="text-sm font-medium">🛢 Planned discharge — {discharge.vessel_name}</p>
+                      <p className="flex items-center gap-1 text-sm font-medium"><Fuel size={14} /> Planned discharge — {discharge.vessel_name}</p>
                       <p className="text-xs text-gray-500">planned_discharge · {format(parseISO(discharge.alongside_target_at), 'HH:mm')} · {discharge.status}</p>
                     </div>
                   </div>
