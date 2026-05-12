@@ -76,7 +76,7 @@ export default function EventsLogPage() {
   }, [fetchEvents])
 
   const byDate = useMemo(() => {
-    const map = new Map<string, OperationalEvent[]>()
+    const map = new Map<string, DayEvent[]>()
     timelineEvents.forEach((event) => {
       const day = event.time.slice(0, 10)
       const list = map.get(day) ?? []
