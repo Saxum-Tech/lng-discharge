@@ -714,6 +714,54 @@ function filterFlightsToWindow(flights: ParsedFlight[], days = AVIATIONSTACK_FOR
   return flights.filter((flight) => withinNextDays(flight.scheduled_arrival, days))
 }
 
+function flightSlotKey(flight: ParsedFlight): string {
+  const scheduled = (flight.scheduled_departure ?? flight.scheduled_arrival).slice(0, 16)
+  return `${flight.origin}|${flight.destination}|${scheduled}`
+}
+
+function scoreFlightNumberPreference(flightNumber: string): number {
+  const normalized = flightNumber.toUpperCase().trim()
+  const iataLike = /^[A-Z0-9]{2}\d{1,4}$/.test(normalized)
+  const icaoLike = /^[A-Z]{3}\d{1,4}$/.test(normalized)
+  const genericLike = /^\d{1,4}$/.test(normalized)
+  if (iataLike) return 0
+  if (icaoLike) return 1
+  if (genericLike) return 2
+  return 3
+}
+
+function pickCanonicalFlight(existing: ParsedFlight, candidate: ParsedFlight): ParsedFlight {
+  const existingScore = scoreFlightNumberPreference(existing.flight_number)
+  const candidateScore = scoreFlightNumberPreference(candidate.flight_number)
+  if (candidateScore !== existingScore) {
+    return candidateScore < existingScore ? candidate : existing
+  }
+  if (candidate.flight_number.length !== existing.flight_number.length) {
+    return candidate.flight_number.length < existing.flight_number.length ? candidate : existing
+  }
+  return candidate.flight_number.localeCompare(existing.flight_number) < 0 ? candidate : existing
+}
+
+function dedupeCodeshareFlights(flights: ParsedFlight[]): { flights: ParsedFlight[]; removed: number } {
+  const bySlot = new Map<string, ParsedFlight>()
+  const removedAliases: string[] = []
+
+  for (const flight of flights) {
+    const key = flightSlotKey(flight)
+    const existing = bySlot.get(key)
+    if (!existing) {
+      bySlot.set(key, flight)
+      continue
+    }
+    const canonical = pickCanonicalFlight(existing, flight)
+    bySlot.set(key, canonical)
+    const removed = canonical === existing ? flight : existing
+    removedAliases.push(removed.flight_number)
+  }
+
+  return { flights: Array.from(bySlot.values()), removed: removedAliases.length }
+}
+
 function parseAviationStackPagination(json: unknown): { total: number; count: number; offset: number } | null {
   if (!json || typeof json !== 'object') return null
   const pagination = (json as { pagination?: unknown }).pagination
@@ -1182,7 +1230,7 @@ export async function runPublicDataSync(
 
   warnings.push(...compareAirportHtmlAndApiFlights(websiteFlights, apiFlights))
 
-  const dedupedFlights = Array.from(
+  const exactDedupedFlights = Array.from(
     new Map(
       flights.map((f) => [
         `${f.flight_number}|${f.origin}|${f.destination}|${f.scheduled_arrival}`,
@@ -1190,6 +1238,7 @@ export async function runPublicDataSync(
       ]),
     ).values(),
   )
+  const { flights: dedupedFlights, removed: codeshareAliasesRemoved } = dedupeCodeshareFlights(exactDedupedFlights)
 
   const dedupedCruises = Array.from(
     new Map(cruises.map((c) => [`${c.vessel_name}|${c.arrival_date}`, c])).values(),
@@ -1206,6 +1255,8 @@ export async function runPublicDataSync(
     requestId,
     websiteFlights: websiteFlights.length,
     apiFlights: apiFlights.length,
+    exactDedupedFlights: exactDedupedFlights.length,
+    codeshareAliasesRemoved,
     dedupedFlights: dedupedFlights.length,
     dedupedCruises: dedupedCruises.length,
     warningCount: warnings.length,
