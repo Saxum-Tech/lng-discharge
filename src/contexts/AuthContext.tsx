@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
+import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Profile, UserRole } from '@/lib/types'
-import { roleIsAllowed } from '@/lib/auth-roles'
+import { roleCanAccessAdmin, roleCanAccessPortal, roleIsAllowed } from '@/lib/auth-roles'
 
 interface SignInOptions {
   allowedRoles?: readonly UserRole[]
@@ -22,9 +23,15 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const isAdminPath = pathname?.startsWith('/admin') && pathname !== '/admin/login'
+  const isPortalPath =
+    pathname != null && ['/calendar', '/day', '/analysis', '/my-entries', '/profile'].some((path) => pathname.startsWith(path))
 
   async function fetchProfile(userId: string) {
     const { data, error } = await supabase
@@ -57,6 +64,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (loading) return
+
+    const canAccessAdmin = Boolean(profile?.is_active && roleCanAccessAdmin(profile.role))
+    const canAccessPortal = Boolean(profile?.is_active && roleCanAccessPortal(profile.role))
+
+    if (isAdminPath && !canAccessAdmin) {
+      const search = new URLSearchParams()
+      if (session?.user) search.set('error', 'unauthorized')
+      const query = search.toString()
+      router.replace(query ? `/admin/login?${query}` : '/admin/login')
+      return
+    }
+
+    if (isPortalPath && !canAccessPortal) {
+      const search = new URLSearchParams()
+      if (session?.user) search.set('error', 'unauthorized')
+      const query = search.toString()
+      router.replace(query ? `/login?${query}` : '/login')
+    }
+  }, [isAdminPath, isPortalPath, loading, pathname, profile, router, session?.user])
 
   async function signIn(email: string, password: string, options?: SignInOptions) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
