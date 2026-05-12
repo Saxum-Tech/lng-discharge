@@ -335,6 +335,19 @@ export function computeDailySuitability(
 }
 
 /**
+ * Return the earliest and latest DayEvents for a given date (YYYY-MM-DD).
+ * Events must already be sorted ascending by time (as produced by buildDayEvents).
+ */
+export function getDayBoundaryEvents(
+  events: DayEvent[],
+  date: string,
+): { earliest: DayEvent | null; latest: DayEvent | null } {
+  const dayEvents = events.filter((e) => e.time.slice(0, 10) === date)
+  if (dayEvents.length === 0) return { earliest: null, latest: null }
+  return { earliest: dayEvents[0], latest: dayEvents[dayEvents.length - 1] }
+}
+
+/**
  * Format a duration in hours to a human-readable string, e.g. "6h 30m".
  */
 export function formatDuration(hours: number): string {

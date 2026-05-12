@@ -9,6 +9,7 @@ import {
   buildDayEvents,
   computeDischargeWindows,
   computeDailySuitability,
+  getDayBoundaryEvents,
   getDaysInMonth,
   getMissingFlightDates,
   formatDuration,
@@ -275,6 +276,24 @@ export default function CalendarPage() {
     return map
   }, [plannedDischarges])
 
+  const firstLastByDate = useMemo(() => {
+    const allEvents = buildDayEvents(flights, cruises, ferries, operationalEvents)
+    const map = new Map<string, { earliest: string; latest: string }>()
+    allEvents.forEach((e) => {
+      const d = e.time.slice(0, 10)
+      const cur = map.get(d)
+      if (!cur) {
+        map.set(d, { earliest: e.time, latest: e.time })
+      } else {
+        map.set(d, {
+          earliest: e.time < cur.earliest ? e.time : cur.earliest,
+          latest: e.time > cur.latest ? e.time : cur.latest,
+        })
+      }
+    })
+    return map
+  }, [flights, cruises, ferries, operationalEvents])
+
   const eventTimingBreakdown = useMemo(() => {
     type MovementType = 'in' | 'out'
     type Movement = { time: string; type: MovementType }
@@ -448,6 +467,7 @@ export default function CalendarPage() {
               const isToday = isSameDay(new Date(`${day}T00:00:00Z`), startOfToday())
               const isInCurrentMonth = monthDays.includes(day)
               const weather = weatherByDate.get(day)
+              const dayBoundary = firstLastByDate.get(day)
               return (
                 <button
                   key={day}
@@ -461,6 +481,20 @@ export default function CalendarPage() {
                   className={`group relative min-h-[112px] border-b border-r border-gray-100 p-1.5 text-left transition-colors hover:bg-blue-50 ${selectedDate === day ? 'ring-2 ring-inset ring-[var(--color-primary)]' : ''} ${!isInCurrentMonth ? 'bg-gray-50 text-gray-400' : daySuitability ? colorClasses[daySuitability.color] : ''}`}
                 >
                   <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : isInCurrentMonth ? 'text-gray-700' : 'text-gray-400'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
+                  {dayBoundary ? (
+                    <div className="mt-1 space-y-0.5">
+                      <div className="flex items-center gap-1 rounded bg-emerald-100 px-1 py-0.5">
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-600">1st</span>
+                        <span className="text-[11px] font-bold text-emerald-900">{format(new Date(dayBoundary.earliest), 'HH:mm')}</span>
+                      </div>
+                      <div className="flex items-center gap-1 rounded bg-rose-100 px-1 py-0.5">
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-rose-600">Last</span>
+                        <span className="text-[11px] font-bold text-rose-900">{format(new Date(dayBoundary.latest), 'HH:mm')}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-1 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-400">No events</div>
+                  )}
                   {missingFlightDates.includes(day) && (
                     <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1 py-0.5 text-[10px] font-semibold text-red-800" title="No flights found for this date">
                       <AlertTriangle size={10} /> !
@@ -512,6 +546,17 @@ export default function CalendarPage() {
               Open full day timeline
             </Link>
           </div>
+          {firstLastByDate.get(selectedDate) ? (
+            <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs">
+              <span className="font-semibold text-gray-700">Overall:</span>
+              <span className="inline-flex items-center gap-0.5 rounded bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-800">
+                ↑ First {format(new Date(firstLastByDate.get(selectedDate)!.earliest), 'HH:mm')}
+              </span>
+              <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 px-1.5 py-0.5 font-semibold text-rose-800">
+                ↓ Last {format(new Date(firstLastByDate.get(selectedDate)!.latest), 'HH:mm')}
+              </span>
+            </div>
+          ) : null}
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
               <div className="flex items-center gap-1 font-semibold"><Plane size={14} /> Flights</div>
@@ -629,6 +674,17 @@ export default function CalendarPage() {
                   Open full day timeline
                 </Link>
               </div>
+              {firstLastByDate.get(selectedDate) ? (
+                <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs">
+                  <span className="font-semibold text-gray-700">Overall:</span>
+                  <span className="inline-flex items-center gap-0.5 rounded bg-emerald-100 px-1.5 py-0.5 font-semibold text-emerald-800">
+                    ↑ First {format(new Date(firstLastByDate.get(selectedDate)!.earliest), 'HH:mm')}
+                  </span>
+                  <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 px-1.5 py-0.5 font-semibold text-rose-800">
+                    ↓ Last {format(new Date(firstLastByDate.get(selectedDate)!.latest), 'HH:mm')}
+                  </span>
+                </div>
+              ) : null}
               <div className="grid gap-2">
                 <div className="rounded-lg border border-gray-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
                   <div className="font-semibold">✈ Flights</div>

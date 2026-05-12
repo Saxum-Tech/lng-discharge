@@ -8,6 +8,7 @@ import {
   buildDayEvents,
   computeDischargeWindows,
   computeDailySuitability,
+  getDayBoundaryEvents,
   getMissingFlightDates,
   formatDuration,
 } from '@/lib/shared-utils'
@@ -104,7 +105,19 @@ export default function DayDetailPage() {
   const selectedDay = date ? parseISO(`${date}T00:00:00Z`) : new Date()
   const previousDay = subDays(selectedDay, 1)
   const nextDay = addDays(selectedDay, 1)
+  const nextDateStr = format(nextDay, 'yyyy-MM-dd')
   const timelineHours = Array.from({ length: 24 }, (_, i) => i)
+
+  const todayBoundary = useMemo(() => getDayBoundaryEvents(events, date ?? ''), [events, date])
+  const tomorrowBoundary = useMemo(() => getDayBoundaryEvents(events, nextDateStr), [events, nextDateStr])
+
+  const overnightWindowHours = useMemo(() => {
+    if (!todayBoundary.latest || !tomorrowBoundary.earliest) return null
+    const latestMs = new Date(todayBoundary.latest.time).getTime()
+    const earliestMs = new Date(tomorrowBoundary.earliest.time).getTime()
+    const hours = (earliestMs - latestMs) / 3_600_000
+    return hours > 0 ? hours : null
+  }, [todayBoundary, tomorrowBoundary])
 
   const moveDay = (day: Date) => {
     router.push(`/day/${format(day, 'yyyy-MM-dd')}`)
@@ -163,6 +176,96 @@ export default function DayDetailPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* Key Event Times — the primary data for determining discharge windows */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Key Event Times</CardTitle>
+            </CardHeader>
+            <p className="mb-3 text-xs text-gray-500">
+              The latest event today and the earliest event tomorrow define the potential overnight discharge window.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {format(selectedDay, 'EEE dd MMM')}
+                </p>
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <span className="text-base">⬆</span>
+                  <span className="font-medium">First event:</span>
+                  {todayBoundary.earliest ? (
+                    <span className="font-semibold text-gray-900">
+                      {formatTimeInZone(todayBoundary.earliest.time)}{' '}
+                      <span className="font-normal text-gray-500">— {todayBoundary.earliest.title}</span>
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">No events</span>
+                  )}
+                </div>
+                <div className="mt-2 flex items-center gap-2 rounded-md bg-rose-50 px-3 py-2 text-sm">
+                  <span className="text-base">⬇</span>
+                  <span className="font-medium text-rose-800">Last event:</span>
+                  {todayBoundary.latest ? (
+                    <span className="font-bold text-rose-900">
+                      {formatTimeInZone(todayBoundary.latest.time)}{' '}
+                      <span className="font-normal text-rose-700">— {todayBoundary.latest.title}</span>
+                    </span>
+                  ) : (
+                    <span className="text-rose-400">No events</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {format(nextDay, 'EEE dd MMM')} (next day)
+                </p>
+                <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm">
+                  <span className="text-base">⬆</span>
+                  <span className="font-medium text-emerald-800">First event:</span>
+                  {tomorrowBoundary.earliest ? (
+                    <span className="font-bold text-emerald-900">
+                      {formatTimeInZone(tomorrowBoundary.earliest.time)}{' '}
+                      <span className="font-normal text-emerald-700">— {tomorrowBoundary.earliest.title}</span>
+                    </span>
+                  ) : (
+                    <span className="text-emerald-600">No events</span>
+                  )}
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+                  <span className="text-base">⬇</span>
+                  <span className="font-medium">Last event:</span>
+                  {tomorrowBoundary.latest ? (
+                    <span className="font-semibold text-gray-900">
+                      {formatTimeInZone(tomorrowBoundary.latest.time)}{' '}
+                      <span className="font-normal text-gray-500">— {tomorrowBoundary.latest.title}</span>
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">No events</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {overnightWindowHours !== null ? (
+              <div className="mt-3 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                <Clock size={18} className="flex-shrink-0 text-blue-500" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">
+                    Potential overnight window: {formatDuration(overnightWindowHours)}
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    {todayBoundary.latest && formatTimeInZone(todayBoundary.latest.time)} LT (end of last event today) →{' '}
+                    {tomorrowBoundary.earliest && formatTimeInZone(tomorrowBoundary.earliest.time)} LT (first event tomorrow)
+                  </p>
+                </div>
+              </div>
+            ) : (
+              todayBoundary.latest === null && tomorrowBoundary.earliest === null ? (
+                <p className="mt-3 text-xs text-gray-400">No events on either day — full day available.</p>
+              ) : null
+            )}
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Suitability decision reasons</CardTitle>
