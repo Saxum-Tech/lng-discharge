@@ -5,13 +5,12 @@ import { addDays, format, isAfter, parseISO, startOfDay } from 'date-fns'
 import { Waves, Wind } from 'lucide-react'
 import {
   fetchMaritimeForecast,
-  degreesToArrow,
+  degreesToCardinal,
   getWeatherPresentation,
   getWeatherSafetyStatus,
   BERTHING_WAVE_LIMIT_M,
   BERTHING_WIND_LIMIT_MS,
   type MaritimeDailyForecast,
-  PORT_COORDINATES,
 } from '@/lib/open-meteo'
 
 type MaritimeWeatherWidgetProps = {
@@ -95,7 +94,7 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Maritime Weather</h2>
           <p className="text-xs text-amber-700">
-            Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m and wind ≤ {BERTHING_WIND_LIMIT_MS} m/s for berthing, plus directional alongside limits.
+            Upcoming 7-day maritime weather report. Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m and wind ≤ {BERTHING_WIND_LIMIT_MS} m/s for berthing, plus directional alongside limits.
           </p>
         </div>
       </div>
@@ -112,9 +111,9 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
               <p className="flex flex-wrap items-center gap-1">
                 {getWeatherPresentation(highlightedDay.weatherCode).icon} {getWeatherPresentation(highlightedDay.weatherCode).label} ·
                 <Wind className="h-3 w-3" aria-hidden="true" />
-                {degreesToArrow(highlightedDay.windDirectionDominant)} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn),
+                {degreesToCardinal(highlightedDay.windDirectionDominant) ?? "—"} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn),
                 <Waves className="h-3 w-3" aria-hidden="true" />
-                {degreesToArrow(highlightedDay.waveDirectionDominant)} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
+                {degreesToCardinal(highlightedDay.waveDirectionDominant) ?? "—"} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
               </p>
             </div>
           )}
@@ -139,11 +138,11 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
                   <p className="truncate text-[11px] text-gray-700">{weather.label}</p>
                   <p className="flex items-center justify-center gap-1 text-[11px] text-gray-500">
                     <Wind className="h-3 w-3" aria-hidden="true" />
-                    {degreesToArrow(day.windDirectionDominant)} {formatNumber(day.windSpeedMax, 0)} kn
+                    {degreesToCardinal(day.windDirectionDominant) ?? "—"} {formatNumber(day.windSpeedMax, 0)} kn
                   </p>
                   <p className="flex items-center justify-center gap-1 text-[11px] text-gray-500">
                     <Waves className="h-3 w-3" aria-hidden="true" />
-                    {degreesToArrow(day.waveDirectionDominant)} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s
+                    {degreesToCardinal(day.waveDirectionDominant) ?? "—"} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s
                   </p>
                   {safety.isUnsafe && <p className="mt-1 text-[10px] font-semibold text-amber-800">Safety limit exceeded</p>}
                 </div>
