@@ -24,10 +24,12 @@ export default function AnalysisPage() {
   const [windows, setWindows] = useState<DischargeWindow[]>([])
   const [loading, setLoading] = useState(true)
   const [missingFlightDates, setMissingFlightDates] = useState<string[]>([])
+  const [showAllDates, setShowAllDates] = useState(false)
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
   const minHours = settings?.min_discharge_window_hours ?? 4
+  const activeMinHours = showAllDates ? 0 : minHours
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -58,10 +60,10 @@ export default function AnalysisPage() {
     ])
 
     const events = buildDayEvents(flightData ?? [], cruiseData ?? [])
-    setWindows(computeDischargeWindows(events, year, month, minHours))
+    setWindows(computeDischargeWindows(events, year, month, activeMinHours))
     setMissingFlightDates(getMissingFlightDates(flightData ?? [], year, month))
     setLoading(false)
-  }, [year, month, minHours])
+  }, [year, month, activeMinHours])
 
   useEffect(() => {
     fetchData()
@@ -158,7 +160,19 @@ export default function AnalysisPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Discharge Windows (≥{minHours}h)</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>
+              All Discharge Windows ({showAllDates ? 'all durations' : `≥${minHours}h`})
+            </CardTitle>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAllDates((prev) => !prev)}
+            >
+              {showAllDates ? 'Hide shorter dates' : 'Show all dates'}
+            </Button>
+          </div>
         </CardHeader>
         {loading ? (
           <div className="flex h-32 items-center justify-center">
