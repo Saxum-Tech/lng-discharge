@@ -107,6 +107,52 @@ function normalizeYear(yearRaw: string): string {
   return String(fullYear)
 }
 
+const SOURCE_TIMEZONE = 'Europe/Gibraltar'
+
+function localDateTimeInZoneToUtcIso(
+  year: number,
+  monthIndex: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): string | null {
+  const utcGuess = Date.UTC(year, monthIndex, day, hour, minute, 0)
+
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+
+  const parts = formatter.formatToParts(new Date(utcGuess))
+  const valueByType = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]))
+  const zoneYear = Number.parseInt(valueByType.year ?? '', 10)
+  const zoneMonthIndex = Number.parseInt(valueByType.month ?? '', 10) - 1
+  const zoneDay = Number.parseInt(valueByType.day ?? '', 10)
+  const zoneHour = Number.parseInt(valueByType.hour ?? '', 10)
+  const zoneMinute = Number.parseInt(valueByType.minute ?? '', 10)
+  const zoneSecond = Number.parseInt(valueByType.second ?? '', 10)
+
+  if (
+    [zoneYear, zoneMonthIndex, zoneDay, zoneHour, zoneMinute, zoneSecond].some((value) => Number.isNaN(value))
+  ) {
+    return null
+  }
+
+  const requestedAsUtc = Date.UTC(year, monthIndex, day, hour, minute, 0)
+  const zonePartsAsUtc = Date.UTC(zoneYear, zoneMonthIndex, zoneDay, zoneHour, zoneMinute, zoneSecond)
+  const corrected = utcGuess + (requestedAsUtc - zonePartsAsUtc)
+  const parsed = new Date(corrected)
+
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+}
+
 function parseLocalToIso(datePart: string, hourPart = '00', minutePart = '00'): string | null {
   const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!match) return null
@@ -116,8 +162,7 @@ function parseLocalToIso(datePart: string, hourPart = '00', minutePart = '00'): 
   const day = Number.parseInt(match[3], 10)
   const hour = Number.parseInt(hourPart, 10)
   const minute = Number.parseInt(minutePart, 10)
-  const parsed = new Date(Date.UTC(year, monthIndex, day, hour, minute, 0))
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+  return localDateTimeInZoneToUtcIso(year, monthIndex, day, hour, minute, SOURCE_TIMEZONE)
 }
 
 function normalizeDate(value: string, contextDate?: string): string | null {
