@@ -278,17 +278,12 @@ export default function CalendarPage() {
 
   const firstLastByDate = useMemo(() => {
     const allEvents = buildDayEvents(flights, cruises, ferries, operationalEvents)
+    const uniqueDates = new Set(allEvents.map((e) => e.time.slice(0, 10)))
     const map = new Map<string, { earliest: string; latest: string }>()
-    allEvents.forEach((e) => {
-      const d = e.time.slice(0, 10)
-      const cur = map.get(d)
-      if (!cur) {
-        map.set(d, { earliest: e.time, latest: e.time })
-      } else {
-        map.set(d, {
-          earliest: e.time < cur.earliest ? e.time : cur.earliest,
-          latest: e.time > cur.latest ? e.time : cur.latest,
-        })
+    uniqueDates.forEach((date) => {
+      const { earliest, latest } = getDayBoundaryEvents(allEvents, date)
+      if (earliest && latest) {
+        map.set(date, { earliest: earliest.time, latest: latest.time })
       }
     })
     return map
