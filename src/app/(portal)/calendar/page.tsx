@@ -393,6 +393,8 @@ export default function CalendarPage() {
               const win = windowsByDate.get(day)
               const daySuitability = suitabilityByDate.get(day)
               const eventCount = eventsByDate.get(day) ?? 0
+              const flightCount = flightEventsByDate.get(day) ?? 0
+              const cruiseCount = cruiseEventsByDate.get(day) ?? 0
               const ferryCount = ferryEventsByDate.get(day) ?? 0
               const dischargeCount = dischargesByDate.get(day) ?? 0
               const isToday = isSameDay(new Date(`${day}T00:00:00Z`), startOfToday())
@@ -418,12 +420,18 @@ export default function CalendarPage() {
                   )}
                   {daySuitability && (
                     <span className={`mt-1 block rounded px-1 py-0.5 text-[11px] font-semibold ${colorBadgeClasses[daySuitability.color]}`}>
-                      {daySuitability.recommended_berthing_time ? `EB Available ${format(parseISO(daySuitability.recommended_berthing_time), 'HH:mm')}` : 'No EB'}
+                      {daySuitability.recommended_berthing_time ? `Berthing as from ${format(parseISO(daySuitability.recommended_berthing_time), 'HH:mm')}` : 'No EB'}
                     </span>
                   )}
                   {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">{format(new Date(win.start_time), 'HH:mm')}→{format(new Date(win.end_time), 'HH:mm')} ({formatDuration(win.duration_hours)})</span>}
-                  {eventCount > 0 && <span className="mt-1 block text-[10px] text-gray-500">{eventCount} evt</span>}
-                  {(ferryCount > 0 || dischargeCount > 0) && (
+                  {(eventCount > 0 || ferryCount > 0) && (
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-gray-600">
+                      <span className="inline-flex items-center rounded bg-sky-100 px-1 py-0.5 font-medium text-sky-900">✈ {flightCount}</span>
+                      <span className="inline-flex items-center rounded bg-purple-100 px-1 py-0.5 font-medium text-purple-900">🛳 {cruiseCount}</span>
+                      <span className="inline-flex items-center rounded bg-cyan-100 px-1 py-0.5 font-medium text-cyan-900">⛴ {ferryCount}</span>
+                    </div>
+                  )}
+                  {dischargeCount > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {ferryCount > 0 && (
                         <span className="inline-flex items-center rounded bg-cyan-100 px-1 py-0.5 text-[10px] font-medium text-cyan-900">
