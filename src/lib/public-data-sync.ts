@@ -35,9 +35,11 @@ export type PublicDataSyncSummary = {
   flights_inserted: number
   flights_updated: number
   flights_skipped: number
+  flights_duplicates_removed: number
   cruises_inserted: number
   cruises_updated: number
   cruises_skipped: number
+  cruises_duplicates_removed: number
   warnings: string[]
   flights_marked_for_reconfirm: number
   cruises_marked_for_reconfirm: number
@@ -797,7 +799,13 @@ async function syncFlights(
   admin: SupabaseClient,
   owner: SyncOwner,
   flights: ParsedFlight[],
-): Promise<{ inserted: number; updated: number; skipped: number; markedForReconfirm: number }> {
+): Promise<{
+  inserted: number
+  updated: number
+  skipped: number
+  markedForReconfirm: number
+  duplicatesRemoved: number
+}> {
   let inserted = 0
   let updated = 0
   let skipped = 0
@@ -932,18 +940,31 @@ async function syncFlights(
     if (deleteDuplicatesError) throw deleteDuplicatesError
   }
 
-  return { inserted, updated, skipped, markedForReconfirm }
+  return {
+    inserted,
+    updated,
+    skipped,
+    markedForReconfirm,
+    duplicatesRemoved: duplicateFlightIds.length,
+  }
 }
 
 async function syncCruises(
   admin: SupabaseClient,
   owner: SyncOwner,
   cruises: ParsedCruise[],
-): Promise<{ inserted: number; updated: number; skipped: number; markedForReconfirm: number }> {
+): Promise<{
+  inserted: number
+  updated: number
+  skipped: number
+  markedForReconfirm: number
+  duplicatesRemoved: number
+}> {
   let inserted = 0
   let updated = 0
   let skipped = 0
   let markedForReconfirm = 0
+  let duplicatesRemoved = 0
   const seenKeys = new Set<string>()
 
   for (const cruise of cruises) {
@@ -1024,7 +1045,56 @@ async function syncCruises(
     markedForReconfirm += 1
   }
 
-  return { inserted, updated, skipped, markedForReconfirm }
+  const { data: syncedCruises, error: syncedCruisesError } = await admin
+    .from('cruise_schedules')
+    .select(
+      'id, vessel_name, arrival_date, departure_date, vessel_type, passenger_count, notes, created_at',
+    )
+    .eq('company_id', owner.companyId)
+    .eq('is_private', false)
+
+  if (syncedCruisesError) throw syncedCruisesError
+
+  const duplicateCruiseIds: string[] = []
+  const canonicalCruiseByKey = new Map<string, { id: string; created_at: string | null }>()
+
+  for (const cruise of syncedCruises ?? []) {
+    const dedupeKey = [
+      cruise.vessel_name,
+      cruise.arrival_date,
+      cruise.departure_date ?? '',
+      cruise.vessel_type ?? '',
+      cruise.passenger_count ?? '',
+      cruise.notes ?? '',
+    ].join('|')
+
+    const canonical = canonicalCruiseByKey.get(dedupeKey)
+    if (!canonical) {
+      canonicalCruiseByKey.set(dedupeKey, { id: cruise.id, created_at: cruise.created_at ?? null })
+      continue
+    }
+
+    const canonicalTime = canonical.created_at ? new Date(canonical.created_at).getTime() : Number.POSITIVE_INFINITY
+    const candidateTime = cruise.created_at ? new Date(cruise.created_at).getTime() : Number.POSITIVE_INFINITY
+
+    if (candidateTime < canonicalTime) {
+      duplicateCruiseIds.push(canonical.id)
+      canonicalCruiseByKey.set(dedupeKey, { id: cruise.id, created_at: cruise.created_at ?? null })
+    } else {
+      duplicateCruiseIds.push(cruise.id)
+    }
+  }
+
+  if (duplicateCruiseIds.length > 0) {
+    const { error: deleteDuplicatesError } = await admin
+      .from('cruise_schedules')
+      .delete()
+      .in('id', duplicateCruiseIds)
+    if (deleteDuplicatesError) throw deleteDuplicatesError
+    duplicatesRemoved = duplicateCruiseIds.length
+  }
+
+  return { inserted, updated, skipped, markedForReconfirm, duplicatesRemoved }
 }
 
 export async function runPublicDataSync(
@@ -1151,20 +1221,24 @@ export async function runPublicDataSync(
     flightsUpdated: flightResults.updated,
     flightsSkipped: flightResults.skipped,
     flightsMarkedForReconfirm: flightResults.markedForReconfirm,
+    flightsDuplicatesRemoved: flightResults.duplicatesRemoved,
     cruisesInserted: cruiseResults.inserted,
     cruisesUpdated: cruiseResults.updated,
     cruisesSkipped: cruiseResults.skipped,
     cruisesMarkedForReconfirm: cruiseResults.markedForReconfirm,
+    cruisesDuplicatesRemoved: cruiseResults.duplicatesRemoved,
   })
 
   return {
     flights_inserted: flightResults.inserted,
     flights_updated: flightResults.updated,
     flights_skipped: flightResults.skipped,
+    flights_duplicates_removed: flightResults.duplicatesRemoved,
     flights_marked_for_reconfirm: flightResults.markedForReconfirm,
     cruises_inserted: cruiseResults.inserted,
     cruises_updated: cruiseResults.updated,
     cruises_skipped: cruiseResults.skipped,
+    cruises_duplicates_removed: cruiseResults.duplicatesRemoved,
     cruises_marked_for_reconfirm: cruiseResults.markedForReconfirm,
     warnings,
   }
