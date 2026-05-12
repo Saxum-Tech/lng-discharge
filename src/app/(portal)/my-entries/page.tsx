@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -46,7 +46,16 @@ function displayActorName(userId: string | null | undefined, labelMap: UserLabel
   return labelMap[userId] ?? `User ${userId.slice(0, 8)}`
 }
 
+
 export default function MyEntriesPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">Loading...</div>}>
+      <MyEntriesContent />
+    </Suspense>
+  )
+}
+
+function MyEntriesContent() {
   const { profile, user } = useAuth()
   const searchParams = useSearchParams()
   const [flights, setFlights] = useState<Flight[]>([])
