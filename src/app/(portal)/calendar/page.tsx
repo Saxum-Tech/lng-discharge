@@ -236,9 +236,21 @@ export default function CalendarPage() {
   }, [plannedDischarges])
 
   const eventTimingBreakdown = useMemo(() => {
-    const buildEarliest = (times: string[]) => {
-      if (times.length === 0) return null
-      return times.reduce((earliest, current) => (current < earliest ? current : earliest))
+    type MovementType = 'in' | 'out'
+    type Movement = { time: string; type: MovementType }
+
+    const buildMovementWindow = (arrivals: string[], departures: string[]) => {
+      const movements: Movement[] = [
+        ...arrivals.map((time) => ({ time, type: 'in' as const })),
+        ...departures.map((time) => ({ time, type: 'out' as const })),
+      ]
+      if (movements.length === 0) {
+        return { first: null, last: null }
+      }
+
+      const first = movements.reduce((earliest, current) => (current.time < earliest.time ? current : earliest))
+      const last = movements.reduce((latest, current) => (current.time > latest.time ? current : latest))
+      return { first, last }
     }
 
     const flightArrivals = flights
@@ -263,9 +275,9 @@ export default function CalendarPage() {
       .map((ferry) => ferry.departure_time as string)
 
     return {
-      flights: { in: buildEarliest(flightArrivals), out: buildEarliest(flightDepartures) },
-      cruises: { in: buildEarliest(cruiseArrivals), out: buildEarliest(cruiseDepartures) },
-      ferries: { in: buildEarliest(ferryArrivals), out: buildEarliest(ferryDepartures) },
+      flights: buildMovementWindow(flightArrivals, flightDepartures),
+      cruises: buildMovementWindow(cruiseArrivals, cruiseDepartures),
+      ferries: buildMovementWindow(ferryArrivals, ferryDepartures),
     }
   }, [flights, cruises, ferries, selectedDate])
 
@@ -447,14 +459,14 @@ export default function CalendarPage() {
               <div className="font-semibold">✈ Flights</div>
               <div className="text-lg font-bold">{flightEventsByDate.get(selectedDate) ?? 0}</div>
               <div className="mt-1 text-xs">
-                In: {eventTimingBreakdown.flights.in ? format(parseISO(eventTimingBreakdown.flights.in), 'HH:mm') : '—'} · Out: {eventTimingBreakdown.flights.out ? format(parseISO(eventTimingBreakdown.flights.out), 'HH:mm') : '—'}
+                First: {eventTimingBreakdown.flights.first ? `${eventTimingBreakdown.flights.first.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.flights.first.time), 'HH:mm')}` : '—'} · Last: {eventTimingBreakdown.flights.last ? `${eventTimingBreakdown.flights.last.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.flights.last.time), 'HH:mm')}` : '—'}
               </div>
             </div>
             <div className="rounded-lg border border-gray-200 bg-purple-50 px-3 py-2 text-sm text-purple-900">
               <div className="font-semibold">🛳 Cruises</div>
               <div className="text-lg font-bold">{cruiseEventsByDate.get(selectedDate) ?? 0}</div>
               <div className="mt-1 text-xs">
-                In: {eventTimingBreakdown.cruises.in ? format(parseISO(eventTimingBreakdown.cruises.in), 'HH:mm') : '—'} · Out: {eventTimingBreakdown.cruises.out ? format(parseISO(eventTimingBreakdown.cruises.out), 'HH:mm') : '—'}
+                First: {eventTimingBreakdown.cruises.first ? `${eventTimingBreakdown.cruises.first.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.cruises.first.time), 'HH:mm')}` : '—'} · Last: {eventTimingBreakdown.cruises.last ? `${eventTimingBreakdown.cruises.last.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.cruises.last.time), 'HH:mm')}` : '—'}
               </div>
             </div>
             <div className="rounded-lg border border-gray-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-900">
@@ -472,7 +484,7 @@ export default function CalendarPage() {
                 )}
               </div>
               <div className="mt-1 text-xs">
-                In: {eventTimingBreakdown.ferries.in ? format(parseISO(eventTimingBreakdown.ferries.in), 'HH:mm') : '—'} · Out: {eventTimingBreakdown.ferries.out ? format(parseISO(eventTimingBreakdown.ferries.out), 'HH:mm') : '—'}
+                First: {eventTimingBreakdown.ferries.first ? `${eventTimingBreakdown.ferries.first.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.ferries.first.time), 'HH:mm')}` : '—'} · Last: {eventTimingBreakdown.ferries.last ? `${eventTimingBreakdown.ferries.last.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.ferries.last.time), 'HH:mm')}` : '—'}
               </div>
             </div>
           </div>
