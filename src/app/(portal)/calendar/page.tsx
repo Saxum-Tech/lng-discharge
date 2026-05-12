@@ -235,6 +235,40 @@ export default function CalendarPage() {
     return map
   }, [plannedDischarges])
 
+  const eventTimingBreakdown = useMemo(() => {
+    const buildEarliest = (times: string[]) => {
+      if (times.length === 0) return null
+      return times.reduce((earliest, current) => (current < earliest ? current : earliest))
+    }
+
+    const flightArrivals = flights
+      .filter((flight) => flight.scheduled_arrival.slice(0, 10) === selectedDate)
+      .map((flight) => flight.scheduled_arrival)
+    const flightDepartures = flights
+      .filter((flight) => flight.scheduled_departure && flight.scheduled_departure.slice(0, 10) === selectedDate)
+      .map((flight) => flight.scheduled_departure as string)
+
+    const cruiseArrivals = cruises
+      .filter((cruise) => cruise.arrival_date.slice(0, 10) === selectedDate)
+      .map((cruise) => cruise.arrival_date)
+    const cruiseDepartures = cruises
+      .filter((cruise) => cruise.departure_date && cruise.departure_date.slice(0, 10) === selectedDate)
+      .map((cruise) => cruise.departure_date as string)
+
+    const ferryArrivals = ferries
+      .filter((ferry) => ferry.arrival_time.slice(0, 10) === selectedDate)
+      .map((ferry) => ferry.arrival_time)
+    const ferryDepartures = ferries
+      .filter((ferry) => ferry.departure_time && ferry.departure_time.slice(0, 10) === selectedDate)
+      .map((ferry) => ferry.departure_time as string)
+
+    return {
+      flights: { in: buildEarliest(flightArrivals), out: buildEarliest(flightDepartures) },
+      cruises: { in: buildEarliest(cruiseArrivals), out: buildEarliest(cruiseDepartures) },
+      ferries: { in: buildEarliest(ferryArrivals), out: buildEarliest(ferryDepartures) },
+    }
+  }, [flights, cruises, ferries, selectedDate])
+
   const weatherByDate = useMemo(() => {
     const map = new Map<string, MaritimeDailyForecast>()
     weatherForecast.forEach((day) => map.set(day.date, day))
@@ -357,6 +391,11 @@ export default function CalendarPage() {
                   key={day}
                   type="button"
                   onClick={() => setSelectedDate(day)}
+                  onDoubleClick={() => {
+                    setCurrentDate(new Date(`${day}T00:00:00Z`))
+                    setSelectedDate(day)
+                    setView('2day')
+                  }}
                   className={`group relative min-h-[112px] border-b border-r border-gray-100 p-1.5 text-left transition-colors hover:bg-blue-50 ${selectedDate === day ? 'ring-2 ring-inset ring-[var(--color-primary)]' : ''} ${!isInCurrentMonth ? 'bg-gray-50 text-gray-400' : daySuitability ? colorClasses[daySuitability.color] : ''}`}
                 >
                   <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : isInCurrentMonth ? 'text-gray-700' : 'text-gray-400'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
@@ -407,10 +446,16 @@ export default function CalendarPage() {
             <div className="rounded-lg border border-gray-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
               <div className="font-semibold">✈ Flights</div>
               <div className="text-lg font-bold">{flightEventsByDate.get(selectedDate) ?? 0}</div>
+              <div className="mt-1 text-xs">
+                In: {eventTimingBreakdown.flights.in ? format(parseISO(eventTimingBreakdown.flights.in), 'HH:mm') : '—'} · Out: {eventTimingBreakdown.flights.out ? format(parseISO(eventTimingBreakdown.flights.out), 'HH:mm') : '—'}
+              </div>
             </div>
             <div className="rounded-lg border border-gray-200 bg-purple-50 px-3 py-2 text-sm text-purple-900">
               <div className="font-semibold">🛳 Cruises</div>
               <div className="text-lg font-bold">{cruiseEventsByDate.get(selectedDate) ?? 0}</div>
+              <div className="mt-1 text-xs">
+                In: {eventTimingBreakdown.cruises.in ? format(parseISO(eventTimingBreakdown.cruises.in), 'HH:mm') : '—'} · Out: {eventTimingBreakdown.cruises.out ? format(parseISO(eventTimingBreakdown.cruises.out), 'HH:mm') : '—'}
+              </div>
             </div>
             <div className="rounded-lg border border-gray-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-900">
               <div className="font-semibold">⛴ Ferries</div>
@@ -425,6 +470,9 @@ export default function CalendarPage() {
                     No warning
                   </span>
                 )}
+              </div>
+              <div className="mt-1 text-xs">
+                In: {eventTimingBreakdown.ferries.in ? format(parseISO(eventTimingBreakdown.ferries.in), 'HH:mm') : '—'} · Out: {eventTimingBreakdown.ferries.out ? format(parseISO(eventTimingBreakdown.ferries.out), 'HH:mm') : '—'}
               </div>
             </div>
           </div>
