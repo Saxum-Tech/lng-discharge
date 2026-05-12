@@ -83,7 +83,9 @@ export default function AnalysisPage() {
     )
   }
 
-  const missingFlightDateSet = new Set(missingFlightDates)
+  const todayIsoDate = format(new Date(), 'yyyy-MM-dd')
+  const upcomingMissingFlightDates = missingFlightDates.filter((date) => date >= todayIsoDate)
+  const missingFlightDateSet = new Set(upcomingMissingFlightDates)
 
   const isEarlyBerthingWindow = (startTime: string) => {
     const start = new Date(startTime)
@@ -137,14 +139,14 @@ export default function AnalysisPage() {
 
 
       {/* Table */}
-      {!loading && missingFlightDates.length > 0 && (
+      {!loading && upcomingMissingFlightDates.length > 0 && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          Missing flight data detected for {missingFlightDates.length} day
-          {missingFlightDates.length > 1 ? 's' : ''} this month. Please run API sync and validate
+          Missing flight data detected for {upcomingMissingFlightDates.length} day
+          {upcomingMissingFlightDates.length > 1 ? 's' : ''} this month. Please run API sync and validate
           inbound schedule coverage. Days marked with ! require review because flights are expected every
           day.
           <div className="mt-2 flex flex-wrap gap-2">
-            {missingFlightDates.map((date) => (
+            {upcomingMissingFlightDates.map((date) => (
               <Link
                 key={date}
                 href={`/day/${date}`}
