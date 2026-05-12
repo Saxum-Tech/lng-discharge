@@ -227,6 +227,46 @@ export default function CalendarPage() {
     return map
   }, [ferries])
 
+  const eventHoverDetailsByDate = useMemo(() => {
+    const map = new Map<string, { flights: string[]; cruises: string[]; ferries: string[] }>()
+    const ensure = (date: string) => {
+      const existing = map.get(date)
+      if (existing) return existing
+      const next = { flights: [] as string[], cruises: [] as string[], ferries: [] as string[] }
+      map.set(date, next)
+      return next
+    }
+
+    flights.forEach((flight) => {
+      const arrivalDate = flight.scheduled_arrival.slice(0, 10)
+      ensure(arrivalDate).flights.push(`${format(parseISO(flight.scheduled_arrival), 'HH:mm')} ${flight.flight_number} arrival (${flight.origin} → ${flight.destination})`)
+      if (flight.scheduled_departure) {
+        const departureDate = flight.scheduled_departure.slice(0, 10)
+        ensure(departureDate).flights.push(`${format(parseISO(flight.scheduled_departure), 'HH:mm')} ${flight.flight_number} departure (${flight.origin} → ${flight.destination})`)
+      }
+    })
+
+    cruises.forEach((cruise) => {
+      const arrivalDate = cruise.arrival_date.slice(0, 10)
+      ensure(arrivalDate).cruises.push(`${format(parseISO(cruise.arrival_date), 'HH:mm')} ${cruise.vessel_name} arrival`)
+      if (cruise.departure_date) {
+        const departureDate = cruise.departure_date.slice(0, 10)
+        ensure(departureDate).cruises.push(`${format(parseISO(cruise.departure_date), 'HH:mm')} ${cruise.vessel_name} departure`)
+      }
+    })
+
+    ferries.forEach((ferry) => {
+      const arrivalDate = ferry.arrival_time.slice(0, 10)
+      ensure(arrivalDate).ferries.push(`${format(parseISO(ferry.arrival_time), 'HH:mm')} ${ferry.ferry_name} arrival`)
+      if (ferry.departure_time) {
+        const departureDate = ferry.departure_time.slice(0, 10)
+        ensure(departureDate).ferries.push(`${format(parseISO(ferry.departure_time), 'HH:mm')} ${ferry.ferry_name} departure`)
+      }
+    })
+
+    return map
+  }, [flights, cruises, ferries])
+
   const dischargesByDate = useMemo(() => {
     const map = new Map<string, number>()
     plannedDischarges.forEach((discharge) => {
@@ -403,6 +443,10 @@ export default function CalendarPage() {
               const cruiseCount = cruiseEventsByDate.get(day) ?? 0
               const ferryCount = ferryEventsByDate.get(day) ?? 0
               const dischargeCount = dischargesByDate.get(day) ?? 0
+              const hoverDetails = eventHoverDetailsByDate.get(day)
+              const flightHoverText = hoverDetails?.flights.length ? `Flight\n${hoverDetails.flights.join('\n')}` : 'Flight\nNo events'
+              const cruiseHoverText = hoverDetails?.cruises.length ? `Cruise\n${hoverDetails.cruises.join('\n')}` : 'Cruise\nNo events'
+              const ferryHoverText = hoverDetails?.ferries.length ? `Ferry\n${hoverDetails.ferries.join('\n')}` : 'Ferry\nNo events'
               const isToday = isSameDay(new Date(`${day}T00:00:00Z`), startOfToday())
               const isInCurrentMonth = monthDays.includes(day)
               const weather = weatherByDate.get(day)
@@ -431,10 +475,10 @@ export default function CalendarPage() {
                   )}
                   {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">{format(new Date(win.start_time), 'HH:mm')}→{format(new Date(win.end_time), 'HH:mm')} ({formatDuration(win.duration_hours)})</span>}
                   {(eventCount > 0 || ferryCount > 0) && (
-                    <div className="mt-1 flex items-center gap-1 text-[10px] text-gray-600">
-                      <span className="inline-flex items-center rounded bg-sky-100 px-1 py-0.5 font-medium text-sky-900">✈ {flightCount}</span>
-                      <span className="inline-flex items-center rounded bg-purple-100 px-1 py-0.5 font-medium text-purple-900">🛳 {cruiseCount}</span>
-                      <span className="inline-flex items-center rounded bg-cyan-100 px-1 py-0.5 font-medium text-cyan-900">⛴ {ferryCount}</span>
+                    <div className="mt-1 grid w-full grid-cols-3 gap-1 text-[10px] text-gray-600">
+                      <span title={flightHoverText} className="inline-flex w-full items-center justify-center rounded bg-sky-100 px-1 py-0.5 font-medium text-sky-900">✈ {flightCount}</span>
+                      <span title={cruiseHoverText} className="inline-flex w-full items-center justify-center rounded bg-purple-100 px-1 py-0.5 font-medium text-purple-900">🛳 {cruiseCount}</span>
+                      <span title={ferryHoverText} className="inline-flex w-full items-center justify-center rounded bg-cyan-100 px-1 py-0.5 font-medium text-cyan-900">⛴ {ferryCount}</span>
                     </div>
                   )}
                   {dischargeCount > 0 && (
