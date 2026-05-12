@@ -82,12 +82,9 @@ export function degreesToCardinal(degrees: number | null) {
   return directions[index]
 }
 
-export function degreesToArrow(degrees: number | null) {
-  if (degrees == null || Number.isNaN(degrees)) return '•'
-  const arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']
-  const normalized = ((degrees % 360) + 360) % 360
-  const index = Math.round(normalized / 45) % 8
-  return arrows[index]
+export function normalizeDegrees(degrees: number | null) {
+  if (degrees == null || Number.isNaN(degrees)) return null
+  return ((degrees % 360) + 360) % 360
 }
 
 function calculateDirectionalWeatherLimits(day: MaritimeDailyForecast): {

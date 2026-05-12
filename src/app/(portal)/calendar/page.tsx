@@ -25,7 +25,8 @@ import type {
 } from '@/lib/types'
 import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Plane, Ship, ShipWheel } from 'lucide-react'
 import { MaritimeWeatherWidget } from '@/components/portal/MaritimeWeatherWidget'
-import { degreesToArrow, degreesToCardinal, fetchMaritimeForecast, fetchMaritimeHourlyForecast, type MaritimeDailyForecast, type MaritimeHourlyForecast } from '@/lib/open-meteo'
+import { degreesToCardinal, fetchMaritimeForecast, fetchMaritimeHourlyForecast, type MaritimeDailyForecast, type MaritimeHourlyForecast } from '@/lib/open-meteo'
+import { DirectionArrow } from '@/components/DirectionArrow'
 import { formatAuditDateTime } from '@/lib/utils'
 import {
   addDays,
@@ -566,10 +567,10 @@ export default function CalendarPage() {
             {[
               { label: 'Wind speed (kn)', key: 'windSpeed' as const, digits: 0 },
               { label: 'Wind gusts (kn)', key: 'windGust' as const, digits: 0 },
-              { label: 'Wind dir (→)', key: 'windDirection' as const, arrow: true },
+              { label: 'Wind dir', key: 'windDirection' as const, arrow: true },
               { label: 'Swell (m)', key: 'waveHeight' as const, digits: 1 },
               { label: 'Swell period (s)', key: 'wavePeriod' as const, digits: 0 },
-              { label: 'Swell dir (→)', key: 'waveDirection' as const, arrow: true },
+              { label: 'Swell dir', key: 'waveDirection' as const, arrow: true },
             ].map((metric) => (
               <div key={metric.label} className="grid grid-cols-[170px_repeat(24,minmax(34px,1fr))_repeat(24,minmax(34px,1fr))] border-b border-gray-100 text-[11px]">
                 <div className="sticky left-0 z-10 border-r border-gray-200 bg-white p-2 font-medium text-gray-700">{metric.label}</div>
@@ -579,7 +580,6 @@ export default function CalendarPage() {
                     const row = rows.find((r) => r.hour === h)
                     const raw = row ? row[metric.key] : null
                     if (metric.arrow) {
-                      const arrow = degreesToArrow(raw as number | null)
                       const direction = degreesToCardinal(raw as number | null)
                       return (
                         <div
@@ -587,7 +587,7 @@ export default function CalendarPage() {
                           className="border-r border-gray-100 px-1 py-1 text-center text-base text-gray-700 last:border-r-0"
                           title={direction ?? 'No direction data'}
                         >
-                          {arrow}
+                          <DirectionArrow degrees={raw as number | null} />
                         </div>
                       )
                     }

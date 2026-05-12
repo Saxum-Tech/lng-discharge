@@ -12,6 +12,7 @@ import {
   BERTHING_WIND_LIMIT_MS,
   type MaritimeDailyForecast,
 } from '@/lib/open-meteo'
+import { DirectionArrow } from '@/components/DirectionArrow'
 
 type MaritimeWeatherWidgetProps = {
   selectedDate?: string
@@ -111,9 +112,9 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
               <p className="flex flex-wrap items-center gap-1">
                 {getWeatherPresentation(highlightedDay.weatherCode).icon} {getWeatherPresentation(highlightedDay.weatherCode).label} ·
                 <Wind className="h-3 w-3" aria-hidden="true" />
-                {degreesToCardinal(highlightedDay.windDirectionDominant) ?? "—"} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn),
+                <DirectionArrow degrees={highlightedDay.windDirectionDominant} /> {degreesToCardinal(highlightedDay.windDirectionDominant) ?? "—"} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn),
                 <Waves className="h-3 w-3" aria-hidden="true" />
-                {degreesToCardinal(highlightedDay.waveDirectionDominant) ?? "—"} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
+                <DirectionArrow degrees={highlightedDay.waveDirectionDominant} /> {degreesToCardinal(highlightedDay.waveDirectionDominant) ?? "—"} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
               </p>
             </div>
           )}
@@ -138,11 +139,11 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
                   <p className="truncate text-[11px] text-gray-700">{weather.label}</p>
                   <p className="flex items-center justify-center gap-1 text-[11px] text-gray-500">
                     <Wind className="h-3 w-3" aria-hidden="true" />
-                    {degreesToCardinal(day.windDirectionDominant) ?? "—"} {formatNumber(day.windSpeedMax, 0)} kn
+                    <DirectionArrow degrees={day.windDirectionDominant} /> {degreesToCardinal(day.windDirectionDominant) ?? "—"} {formatNumber(day.windSpeedMax, 0)} kn
                   </p>
                   <p className="flex items-center justify-center gap-1 text-[11px] text-gray-500">
                     <Waves className="h-3 w-3" aria-hidden="true" />
-                    {degreesToCardinal(day.waveDirectionDominant) ?? "—"} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s
+                    <DirectionArrow degrees={day.waveDirectionDominant} /> {degreesToCardinal(day.waveDirectionDominant) ?? "—"} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s
                   </p>
                   {safety.isUnsafe && <p className="mt-1 text-[10px] font-semibold text-amber-800">Safety limit exceeded</p>}
                 </div>
