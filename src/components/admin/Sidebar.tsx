@@ -10,7 +10,7 @@ const navItems = [
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/settings/branding', label: 'Branding', icon: Settings },
   { href: '/admin/settings/system', label: 'System', icon: Sliders },
-  { href: '/calendar', label: 'Calendar', icon: CalendarDays },
+  { href: '/admin/events-log', label: 'Events Log', icon: CalendarDays },
   { href: '/admin/audit', label: 'Audit Log', icon: ScrollText },
 ]
 
