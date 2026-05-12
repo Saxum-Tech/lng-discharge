@@ -401,12 +401,10 @@ export default function CalendarPage() {
   return (
     <div className="pb-8">
       <div className="w-full border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <MaritimeWeatherWidget />
-        </div>
+        <MaritimeWeatherWidget />
       </div>
 
-      <div className="mx-auto mt-6 max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mt-6 w-full px-4 sm:px-6 lg:px-8">
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">{heading}</h1>

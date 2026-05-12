@@ -90,14 +90,10 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
   const adverseDays = forecast.filter((day) => getWeatherPresentation(day.weatherCode).isAdverse || getWeatherSafetyStatus(day).isUnsafe)
 
   return (
-    <section className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Maritime Weather</h2>
-          <p className="text-xs text-amber-700">
-            Upcoming 7-day maritime weather report. Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m and wind ≤ {BERTHING_WIND_LIMIT_MS} m/s for berthing, plus directional alongside limits.
-          </p>
-        </div>
+    <section className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg font-semibold text-gray-900">Maritime Weather</h2>
+        <p className="text-xs text-amber-700">Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m · wind ≤ {BERTHING_WIND_LIMIT_MS} m/s.</p>
       </div>
 
       {loading ? (
@@ -122,12 +118,12 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
           {selectedDayMessage && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{selectedDayMessage}</div>}
 
           {adverseDays.length > 0 && (
-            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="mb-2 text-xs text-amber-900">
               <span className="font-semibold">Adverse weather watch:</span> {adverseDays.map((day) => format(parseISO(day.date), 'dd MMM')).join(', ')}
             </div>
           )}
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="flex w-full gap-2 overflow-x-auto pb-1">
             {shortForecast.map((day) => {
               const weather = getWeatherPresentation(day.weatherCode)
               const safety = getWeatherSafetyStatus(day)
