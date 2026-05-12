@@ -12,6 +12,7 @@ import {
   BERTHING_WIND_LIMIT_MS,
   type MaritimeDailyForecast,
 } from '@/lib/open-meteo'
+import { DirectionArrow } from '@/components/DirectionArrow'
 
 type MaritimeWeatherWidgetProps = {
   selectedDate?: string
@@ -101,7 +102,21 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
         <p className="text-sm text-red-600">{error}</p>
       ) : (
         <>
-          {selectedDayMessage && <div className="mb-2 text-xs text-amber-800">{selectedDayMessage}</div>}
+          {highlightedDay && (
+            <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+              <p className="font-medium">{format(parseISO(highlightedDay.date), 'EEEE, d MMM yyyy')}</p>
+              <p className="flex flex-wrap items-center gap-1">
+                {getWeatherPresentation(highlightedDay.weatherCode).icon} {getWeatherPresentation(highlightedDay.weatherCode).label} ·
+                <Wind className="h-3 w-3" aria-hidden="true" />
+                <DirectionArrow degrees={highlightedDay.windDirectionDominant} /> {degreesToCardinal(highlightedDay.windDirectionDominant) ?? "—"} {formatNumber(highlightedDay.windSpeedMax)} kn (gusts {formatNumber(highlightedDay.windGustsMax)} kn),
+                <Waves className="h-3 w-3" aria-hidden="true" />
+                <DirectionArrow degrees={highlightedDay.waveDirectionDominant} /> {degreesToCardinal(highlightedDay.waveDirectionDominant) ?? "—"} {formatNumber(highlightedDay.waveHeightMax)} m @ {formatNumber(highlightedDay.wavePeriodMax)} s.
+              </p>
+            </div>
+          )}
+
+          {selectedDayMessage && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{selectedDayMessage}</div>}
+
           {adverseDays.length > 0 && (
             <div className="mb-2 text-xs text-amber-900">
               <span className="font-semibold">Adverse weather watch:</span> {adverseDays.map((day) => format(parseISO(day.date), 'dd MMM')).join(', ')}
@@ -114,13 +129,19 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
               const safety = getWeatherSafetyStatus(day)
               const isSelected = selectedDate === day.date
               return (
-                <div
-                  key={day.date}
-                  className={`min-w-[170px] flex-1 rounded-md border px-2 py-1 text-xs ${isSelected ? 'border-blue-300 bg-blue-50' : weather.isAdverse || safety.isUnsafe ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}
-                >
-                  <p className="font-semibold text-gray-700">{format(parseISO(day.date), 'EEE dd')} · {weather.icon} {weather.label}</p>
-                  <p className="mt-0.5 flex items-center gap-1 text-gray-600"><Wind className="h-3 w-3" />{degreesToCardinal(day.windDirectionDominant) ?? '—'} {formatNumber(day.windSpeedMax, 0)} kn</p>
-                  <p className="flex items-center gap-1 text-gray-600"><Waves className="h-3 w-3" />{degreesToCardinal(day.waveDirectionDominant) ?? '—'} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s</p>
+                <div key={day.date} className={`rounded-lg border p-2 text-center ${isSelected ? 'border-blue-300 bg-blue-50' : weather.isAdverse || safety.isUnsafe ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
+                  <p className="text-[11px] font-semibold text-gray-600">{format(parseISO(day.date), 'EEE dd')}</p>
+                  <p className="text-xl" aria-label={weather.label}>{weather.icon}</p>
+                  <p className="truncate text-[11px] text-gray-700">{weather.label}</p>
+                  <p className="flex items-center justify-center gap-1 text-[11px] text-gray-500">
+                    <Wind className="h-3 w-3" aria-hidden="true" />
+                    <DirectionArrow degrees={day.windDirectionDominant} /> {degreesToCardinal(day.windDirectionDominant) ?? "—"} {formatNumber(day.windSpeedMax, 0)} kn
+                  </p>
+                  <p className="flex items-center justify-center gap-1 text-[11px] text-gray-500">
+                    <Waves className="h-3 w-3" aria-hidden="true" />
+                    <DirectionArrow degrees={day.waveDirectionDominant} /> {degreesToCardinal(day.waveDirectionDominant) ?? "—"} {formatNumber(day.waveHeightMax)} m / {formatNumber(day.wavePeriodMax)} s
+                  </p>
+                  {safety.isUnsafe && <p className="mt-1 text-[10px] font-semibold text-amber-800">Safety limit exceeded</p>}
                 </div>
               )
             })}
