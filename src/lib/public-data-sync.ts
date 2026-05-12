@@ -728,6 +728,17 @@ function filterFlightsToWindow(flights: ParsedFlight[], days = AVIATIONSTACK_FOR
   return flights.filter((flight) => withinNextDays(flight.scheduled_arrival, days))
 }
 
+function mergeApiGapFlights(
+  websiteFlights: ParsedFlight[],
+  apiFlights: ParsedFlight[],
+  days = AVIATIONSTACK_FORWARD_DAYS,
+): ParsedFlight[] {
+  const websiteWindow = filterFlightsToWindow(websiteFlights, days)
+  const apiWindow = filterFlightsToWindow(apiFlights, days)
+  const websiteSlots = new Set(websiteWindow.map(flightSlotKey))
+  return apiWindow.filter((flight) => !websiteSlots.has(flightSlotKey(flight)))
+}
+
 function flightSlotKey(flight: ParsedFlight): string {
   const scheduled = (flight.scheduled_departure ?? flight.scheduled_arrival).slice(0, 16)
   return `${flight.origin}|${flight.destination}|${scheduled}`
@@ -1211,9 +1222,8 @@ export async function runPublicDataSync(
         const apiResult = await fetchAllAviationStackFlightsForUrl(apiUrl)
         const windowedApiResult = filterFlightsToWindow(apiResult)
         apiFlights.push(...windowedApiResult)
-        flights = [...flights, ...windowedApiResult]
       }
-      if (!process.env.FREE_FLIGHT_API_URL && flights.length === 0) {
+      if (!process.env.FREE_FLIGHT_API_URL && apiFlights.length === 0) {
         const fallbackUrls = ['arr_iata', 'dep_iata'].map(
           (key) =>
             `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(aviationApiKey)}&${key}=${DEFAULT_DESTINATION_AIRPORT}`,
@@ -1222,9 +1232,8 @@ export async function runPublicDataSync(
           const apiResult = await fetchAllAviationStackFlightsForUrl(apiUrl)
           const windowedApiResult = filterFlightsToWindow(apiResult)
           apiFlights.push(...windowedApiResult)
-          flights = [...flights, ...windowedApiResult]
         }
-        if (flights.length > 0) {
+        if (apiFlights.length > 0) {
           warnings.push(
             `AviationStack returned no flights in the next ${AVIATIONSTACK_FORWARD_DAYS}-day window; used non-date fallback endpoints for GIB arrivals/departures.`,
           )
@@ -1243,6 +1252,8 @@ export async function runPublicDataSync(
   }
 
   warnings.push(...compareAirportHtmlAndApiFlights(websiteFlights, apiFlights))
+  const apiGapFlights = mergeApiGapFlights(websiteFlights, apiFlights)
+  flights = [...flights, ...apiGapFlights]
 
   const exactDedupedFlights = Array.from(
     new Map(
