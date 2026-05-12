@@ -14,7 +14,7 @@ import type {
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { format, parseISO, addMonths, endOfDay, endOfMonth, startOfDay, startOfMonth } from 'date-fns'
+import { format, parseISO, addMonths, addWeeks, endOfMonth, endOfWeek, startOfMonth, startOfWeek } from 'date-fns'
 import {
   Plus,
   Trash2,
@@ -33,7 +33,7 @@ import {
 import { formatAuditDateTime } from '@/lib/utils'
 
 type EntryType = 'flight' | 'cruise' | 'ferry' | 'operational'
-type DateFilter = 'all' | 'today' | 'this_month' | 'next_month'
+type DateFilter = 'week' | 'month'
 
 type UserLabelMap = Record<string, string>
 type SectionKey = 'flights' | 'cruises' | 'ferries' | 'operational'
@@ -213,7 +213,7 @@ export default function MyEntriesClientPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">My Entries</h1>
+        <h1 className="text-2xl font-bold text-gray-900">My Events</h1>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" onClick={() => openAdd('flight')}>
             <Plus size={14} /> Add Flight
@@ -389,31 +389,22 @@ function EntryList({
   isExpanded: boolean
   onToggle: () => void
 }) {
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
+  const [dateFilter, setDateFilter] = useState<DateFilter>('month')
+  const [rangeOffset, setRangeOffset] = useState(0)
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
 
   const filteredRows = useMemo(() => {
     const now = new Date()
+    const referenceDate = dateFilter === 'week' ? addWeeks(now, rangeOffset) : addMonths(now, rangeOffset)
+    const rangeStart =
+      dateFilter === 'week' ? startOfWeek(referenceDate, { weekStartsOn: 1 }) : startOfMonth(referenceDate)
+    const rangeEnd = dateFilter === 'week' ? endOfWeek(referenceDate, { weekStartsOn: 1 }) : endOfMonth(referenceDate)
     const lowerQuery = query.trim().toLowerCase()
 
     return rows.filter((row) => {
       const eventDate = parseISO(row.filterDate)
-      let matchesDate = true
-      if (dateFilter === 'today') {
-        const start = startOfDay(now)
-        const end = endOfDay(now)
-        matchesDate = eventDate >= start && eventDate <= end
-      } else if (dateFilter === 'this_month') {
-        const start = startOfMonth(now)
-        const end = endOfMonth(now)
-        matchesDate = eventDate >= start && eventDate <= end
-      } else if (dateFilter === 'next_month') {
-        const nextMonth = addMonths(now, 1)
-        const start = startOfMonth(nextMonth)
-        const end = endOfMonth(nextMonth)
-        matchesDate = eventDate >= start && eventDate <= end
-      }
+      const matchesDate = eventDate >= rangeStart && eventDate <= rangeEnd
 
       const matchesQuery =
         !lowerQuery ||
@@ -423,7 +414,18 @@ function EntryList({
 
       return matchesDate && matchesQuery
     })
-  }, [rows, dateFilter, query, userLabels, currentUserId])
+  }, [rows, dateFilter, rangeOffset, query, userLabels, currentUserId])
+
+  const rangeLabel = useMemo(() => {
+    const now = new Date()
+    const referenceDate = dateFilter === 'week' ? addWeeks(now, rangeOffset) : addMonths(now, rangeOffset)
+    if (dateFilter === 'week') {
+      const start = startOfWeek(referenceDate, { weekStartsOn: 1 })
+      const end = endOfWeek(referenceDate, { weekStartsOn: 1 })
+      return `${format(start, 'dd MMM yyyy')} – ${format(end, 'dd MMM yyyy')}`
+    }
+    return format(referenceDate, 'MMMM yyyy')
+  }, [dateFilter, rangeOffset])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / 100))
   const safePage = Math.min(page, totalPages)
@@ -431,7 +433,7 @@ function EntryList({
 
   useEffect(() => {
     setPage(1)
-  }, [dateFilter, query, rows.length])
+  }, [dateFilter, rangeOffset, query, rows.length])
 
   return (
     <Card>
@@ -460,14 +462,24 @@ function EntryList({
           <label className="text-xs font-medium uppercase tracking-wide text-gray-500">Range</label>
           <select
             value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            onChange={(e) => {
+              setDateFilter(e.target.value as DateFilter)
+              setRangeOffset(0)
+            }}
             className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
           >
-            <option value="all">All</option>
-            <option value="today">Today</option>
-            <option value="this_month">This month</option>
-            <option value="next_month">Next month</option>
+            <option value="week">Week</option>
+            <option value="month">Month</option>
           </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setRangeOffset((v) => v - 1)}>
+            Prev
+          </Button>
+          <span className="text-sm text-gray-600">{rangeLabel}</span>
+          <Button size="sm" variant="ghost" disabled={rangeOffset >= 3} onClick={() => setRangeOffset((v) => Math.min(3, v + 1))}>
+            Next
+          </Button>
         </div>
         <div className="min-w-[220px] flex-1">
           <label className="sr-only" htmlFor={`${title}-search`}>Search</label>
@@ -480,7 +492,7 @@ function EntryList({
         </div>
       </div>
       {filteredRows.length === 0 ? (
-        <p className="text-sm text-gray-400">No entries yet.</p>
+        <p className="text-sm text-gray-400">No events yet.</p>
       ) : (
         <div className="divide-y divide-gray-100">
           {pagedRows.map((row) => (
