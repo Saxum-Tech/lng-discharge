@@ -14,6 +14,18 @@ export type MaritimeDailyForecast = {
   wavePeriodMax: number | null
 }
 
+export type MaritimeHourlyForecast = {
+  time: string
+  date: string
+  hour: number
+  windSpeed: number | null
+  windGust: number | null
+  windDirection: number | null
+  waveHeight: number | null
+  waveDirection: number | null
+  wavePeriod: number | null
+}
+
 export const MPS_TO_KNOTS = 1.943844
 export const BERTHING_WAVE_LIMIT_M = 1.0
 export const BERTHING_WIND_LIMIT_MS = 10
@@ -31,6 +43,18 @@ type OpenMeteoDailyResponse = {
     wave_height_max?: number[]
     wave_direction_dominant?: number[]
     wave_period_max?: number[]
+  }
+}
+
+type OpenMeteoHourlyResponse = {
+  hourly?: {
+    time?: string[]
+    wind_speed_10m?: number[]
+    wind_gusts_10m?: number[]
+    wind_direction_10m?: number[]
+    wave_height?: number[]
+    wave_direction?: number[]
+    wave_period?: number[]
   }
 }
 
@@ -135,6 +159,12 @@ async function fetchOpenMeteo(url: string) {
   return (await response.json()) as OpenMeteoDailyResponse
 }
 
+async function fetchOpenMeteoHourly(url: string) {
+  const response = await fetch(url, { cache: 'no-store' })
+  if (!response.ok) throw new Error(`Open-Meteo API request failed (${response.status})`)
+  return (await response.json()) as OpenMeteoHourlyResponse
+}
+
 export async function fetchMaritimeForecast(days = 14): Promise<MaritimeDailyForecast[]> {
   const baseParams = {
     latitude: PORT_COORDINATES.latitude.toString(),
@@ -177,5 +207,50 @@ export async function fetchMaritimeForecast(days = 14): Promise<MaritimeDailyFor
     waveHeightMax: waveHeight[i] ?? null,
     waveDirectionDominant: waveDirection[i] ?? null,
     wavePeriodMax: wavePeriod[i] ?? null,
+  }))
+}
+
+export async function fetchMaritimeHourlyForecast(days = 14): Promise<MaritimeHourlyForecast[]> {
+  const baseParams = {
+    latitude: PORT_COORDINATES.latitude.toString(),
+    longitude: PORT_COORDINATES.longitude.toString(),
+    forecast_days: String(days),
+    timezone: 'auto',
+  }
+
+  const weatherParams = new URLSearchParams({
+    ...baseParams,
+    hourly: 'wind_speed_10m,wind_gusts_10m,wind_direction_10m',
+    wind_speed_unit: 'kn',
+  })
+
+  const marineParams = new URLSearchParams({
+    ...baseParams,
+    hourly: 'wave_height,wave_direction,wave_period',
+  })
+
+  const [weatherData, marineData] = await Promise.all([
+    fetchOpenMeteoHourly(`https://api.open-meteo.com/v1/forecast?${weatherParams.toString()}`),
+    fetchOpenMeteoHourly(`https://marine-api.open-meteo.com/v1/marine?${marineParams.toString()}`),
+  ])
+
+  const times = weatherData.hourly?.time ?? marineData.hourly?.time ?? []
+  const windSpeed = weatherData.hourly?.wind_speed_10m ?? []
+  const gusts = weatherData.hourly?.wind_gusts_10m ?? []
+  const windDirection = weatherData.hourly?.wind_direction_10m ?? []
+  const waveHeight = marineData.hourly?.wave_height ?? []
+  const waveDirection = marineData.hourly?.wave_direction ?? []
+  const wavePeriod = marineData.hourly?.wave_period ?? []
+
+  return times.map((time, i) => ({
+    time,
+    date: time.slice(0, 10),
+    hour: Number.parseInt(time.slice(11, 13), 10),
+    windSpeed: windSpeed[i] ?? null,
+    windGust: gusts[i] ?? null,
+    windDirection: windDirection[i] ?? null,
+    waveHeight: waveHeight[i] ?? null,
+    waveDirection: waveDirection[i] ?? null,
+    wavePeriod: wavePeriod[i] ?? null,
   }))
 }
