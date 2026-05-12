@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { addMonths, endOfMonth, format, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import type { OperationalEvent, OperationalEventType } from '@/lib/types'
+import type { CruiseSchedule, DayEvent, FerrySchedule, Flight, OperationalEvent, OperationalEventType, PlannedDischarge } from '@/lib/types'
+import { buildDayEvents } from '@/lib/shared-utils'
 import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -41,14 +42,31 @@ export default function EventsLogPage() {
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [events, setEvents] = useState<OperationalEvent[]>([])
+  const [timelineEvents, setTimelineEvents] = useState<DayEvent[]>([])
+  const [plannedDischarges, setPlannedDischarges] = useState<PlannedDischarge[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [form, setForm] = useState<EventFormState | null>(null)
 
   const fetchEvents = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('operational_events').select('*').order('start_time')
-    setEvents((data ?? []) as OperationalEvent[])
+    const [{ data: operationalData }, { data: flightsData }, { data: cruisesData }, { data: ferriesData }, { data: dischargesData }] = await Promise.all([
+      supabase.from('operational_events').select('*').order('start_time'),
+      supabase.from('flights').select('*'),
+      supabase.from('cruise_schedules').select('*'),
+      supabase.from('ferries').select('*'),
+      supabase.from('planned_discharges').select('*'),
+    ])
+
+    const operationalEvents = (operationalData ?? []) as OperationalEvent[]
+    const flights = (flightsData ?? []) as Flight[]
+    const cruises = (cruisesData ?? []) as CruiseSchedule[]
+    const ferries = (ferriesData ?? []) as FerrySchedule[]
+    const discharges = (dischargesData ?? []) as PlannedDischarge[]
+
+    setEvents(operationalEvents)
+    setTimelineEvents(buildDayEvents(flights, cruises, ferries, operationalEvents))
+    setPlannedDischarges(discharges)
     setSelectedIds(new Set())
     setLoading(false)
   }, [])
@@ -59,14 +77,14 @@ export default function EventsLogPage() {
 
   const byDate = useMemo(() => {
     const map = new Map<string, OperationalEvent[]>()
-    events.forEach((event) => {
-      const day = event.start_time.slice(0, 10)
+    timelineEvents.forEach((event) => {
+      const day = event.time.slice(0, 10)
       const list = map.get(day) ?? []
       list.push(event)
       map.set(day, list)
     })
     return [...map.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
-  }, [events])
+  }, [timelineEvents])
 
   const eventDaySet = useMemo(() => new Set(byDate.map(([date]) => date)), [byDate])
 
@@ -188,22 +206,48 @@ export default function EventsLogPage() {
       {loading ? <p className="text-sm text-gray-500">Loading...</p> : (
         <div className="space-y-4">
           {visibleGroups.length === 0 && <p className="text-sm text-gray-500">No events for this period.</p>}
-          {visibleGroups.map(([date, dayEvents]) => (
-            <section key={date} className="rounded-lg border border-gray-200 bg-white">
-              <header className="border-b border-gray-100 px-4 py-3 font-semibold">{format(parseISO(date), 'EEEE, d MMMM yyyy')}</header>
-              {dayEvents.map((event) => (
-                <div key={event.id} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
-                  <input type="checkbox" checked={selectedIds.has(event.id)} onChange={(e) => { const n = new Set(selectedIds); e.target.checked ? n.add(event.id) : n.delete(event.id); setSelectedIds(n) }} />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{event.title}</p>
-                    <p className="text-xs text-gray-500">{event.event_type} · {format(parseISO(event.start_time), 'HH:mm')} {event.end_time ? `- ${format(parseISO(event.end_time), 'HH:mm')}` : ''} · {event.data_source}</p>
+          {visibleGroups.map(([date, dayEvents]) => {
+            const operationalForDay = dayEvents
+              .map((item) => events.find((event) => event.id === item.id))
+              .filter((event): event is OperationalEvent => !!event)
+            const plannedForDay = plannedDischarges.filter((item) => item.discharge_date.slice(0, 10) === date)
+
+            return (
+              <section key={date} className="rounded-lg border border-gray-200 bg-white">
+                <header className="border-b border-gray-100 px-4 py-3 font-semibold">{format(parseISO(date), 'EEEE, d MMMM yyyy')}</header>
+
+                {dayEvents.filter((event) => event.type !== 'operational').map((event) => (
+                  <div key={`timeline-${event.id}`} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{event.title}</p>
+                      <p className="text-xs text-gray-500">{event.type} · {format(parseISO(event.time), 'HH:mm')} {event.end_time ? `- ${format(parseISO(event.end_time), 'HH:mm')}` : ''} · {event.data_source ?? 'manual'}</p>
+                    </div>
                   </div>
-                  <button onClick={() => void toggleVisibility(event)} className="rounded p-2 hover:bg-gray-100">{event.is_private ? <EyeOff size={16} /> : <Eye size={16} />}</button>
-                  <button onClick={() => setForm({ id: event.id, title: event.title, event_type: event.event_type, start_time: toLocalInputValue(event.start_time), end_time: event.end_time ? toLocalInputValue(event.end_time) : '', blocks_discharge: event.blocks_discharge, is_private: event.is_private, notes: event.notes ?? '' })} className="rounded p-2 hover:bg-gray-100"><Pencil size={16} /></button>
-                </div>
-              ))}
-            </section>
-          ))}
+                ))}
+
+                {plannedForDay.map((discharge) => (
+                  <div key={`discharge-${discharge.id}`} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">🛢 Planned discharge — {discharge.vessel_name}</p>
+                      <p className="text-xs text-gray-500">planned_discharge · {format(parseISO(discharge.alongside_target_at), 'HH:mm')} · {discharge.status}</p>
+                    </div>
+                  </div>
+                ))}
+
+                {operationalForDay.map((event) => (
+                  <div key={event.id} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
+                    <input type="checkbox" checked={selectedIds.has(event.id)} onChange={(e) => { const n = new Set(selectedIds); e.target.checked ? n.add(event.id) : n.delete(event.id); setSelectedIds(n) }} />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Admin override: {event.title}</p>
+                      <p className="text-xs text-gray-500">{event.event_type} · {format(parseISO(event.start_time), 'HH:mm')} {event.end_time ? `- ${format(parseISO(event.end_time), 'HH:mm')}` : ''} · {event.data_source}</p>
+                    </div>
+                    <button onClick={() => void toggleVisibility(event)} className="rounded p-2 hover:bg-gray-100">{event.is_private ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+                    <button onClick={() => setForm({ id: event.id, title: event.title, event_type: event.event_type, start_time: toLocalInputValue(event.start_time), end_time: event.end_time ? toLocalInputValue(event.end_time) : '', blocks_discharge: event.blocks_discharge, is_private: event.is_private, notes: event.notes ?? '' })} className="rounded p-2 hover:bg-gray-100"><Pencil size={16} /></button>
+                  </div>
+                ))}
+              </section>
+            )
+          })}
         </div>)}
       {form && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="w-full max-w-xl space-y-3 rounded-lg bg-white p-5"><h3 className="text-lg font-semibold">{form.id ? 'Edit event' : 'Add event'}</h3>
         <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Title" />
