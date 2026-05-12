@@ -37,6 +37,13 @@ function toDayKey(date: Date) {
   return date.toISOString().slice(0, 10)
 }
 
+function formatIsoTime(value: string | null | undefined, fallback = '—') {
+  if (!value) return fallback
+  const date = parseISO(value)
+  if (Number.isNaN(date.getTime())) return fallback
+  return format(date, 'HH:mm')
+}
+
 export default function EventsLogPage() {
   const { profile, user } = useAuth()
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()))
@@ -220,7 +227,7 @@ export default function EventsLogPage() {
                   <div key={`timeline-${event.id}`} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
                     <div className="flex-1">
                       <p className="text-sm font-medium">{event.title}</p>
-                      <p className="text-xs text-gray-500">{event.type} · {format(parseISO(event.time), 'HH:mm')} {event.end_time ? `- ${format(parseISO(event.end_time), 'HH:mm')}` : ''} · {event.data_source ?? 'manual'}</p>
+                      <p className="text-xs text-gray-500">{event.type} · {formatIsoTime(event.time)} {event.end_time ? `- ${formatIsoTime(event.end_time)}` : ''} · {event.data_source ?? 'manual'}</p>
                     </div>
                   </div>
                 ))}
@@ -229,7 +236,7 @@ export default function EventsLogPage() {
                   <div key={`discharge-${discharge.id}`} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
                     <div className="flex-1">
                       <p className="text-sm font-medium">🛢 Planned discharge — {discharge.vessel_name}</p>
-                      <p className="text-xs text-gray-500">planned_discharge · {format(parseISO(discharge.alongside_target_at), 'HH:mm')} · {discharge.status}</p>
+                      <p className="text-xs text-gray-500">planned_discharge · {formatIsoTime(discharge.alongside_target_at)} · {discharge.status}</p>
                     </div>
                   </div>
                 ))}
@@ -239,7 +246,7 @@ export default function EventsLogPage() {
                     <input type="checkbox" checked={selectedIds.has(event.id)} onChange={(e) => { const n = new Set(selectedIds); e.target.checked ? n.add(event.id) : n.delete(event.id); setSelectedIds(n) }} />
                     <div className="flex-1">
                       <p className="text-sm font-medium">Admin override: {event.title}</p>
-                      <p className="text-xs text-gray-500">{event.event_type} · {format(parseISO(event.start_time), 'HH:mm')} {event.end_time ? `- ${format(parseISO(event.end_time), 'HH:mm')}` : ''} · {event.data_source}</p>
+                      <p className="text-xs text-gray-500">{event.event_type} · {formatIsoTime(event.start_time)} {event.end_time ? `- ${formatIsoTime(event.end_time)}` : ''} · {event.data_source}</p>
                     </div>
                     <button onClick={() => void toggleVisibility(event)} className="rounded p-2 hover:bg-gray-100">{event.is_private ? <EyeOff size={16} /> : <Eye size={16} />}</button>
                     <button onClick={() => setForm({ id: event.id, title: event.title, event_type: event.event_type, start_time: toLocalInputValue(event.start_time), end_time: event.end_time ? toLocalInputValue(event.end_time) : '', blocks_discharge: event.blocks_discharge, is_private: event.is_private, notes: event.notes ?? '' })} className="rounded p-2 hover:bg-gray-100"><Pencil size={16} /></button>
