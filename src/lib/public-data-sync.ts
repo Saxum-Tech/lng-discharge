@@ -836,6 +836,57 @@ async function syncFlights(
     markedForReconfirm += 1
   }
 
+  const { data: syncedFlights, error: syncedFlightsError } = await admin
+    .from('flights')
+    .select(
+      'id, flight_number, origin, destination, scheduled_arrival, scheduled_departure, aircraft_type, passenger_count, delay_minutes, notes, created_at',
+    )
+    .eq('company_id', owner.companyId)
+    .eq('is_private', false)
+
+  if (syncedFlightsError) throw syncedFlightsError
+
+  const duplicateFlightIds: string[] = []
+  const canonicalFlightByKey = new Map<string, { id: string; created_at: string | null }>()
+
+  for (const flight of syncedFlights ?? []) {
+    const dedupeKey = [
+      flight.flight_number,
+      flight.origin,
+      flight.destination,
+      flight.scheduled_arrival,
+      flight.scheduled_departure ?? '',
+      flight.aircraft_type ?? '',
+      flight.passenger_count ?? '',
+      flight.delay_minutes ?? '',
+      flight.notes ?? '',
+    ].join('|')
+
+    const canonical = canonicalFlightByKey.get(dedupeKey)
+    if (!canonical) {
+      canonicalFlightByKey.set(dedupeKey, { id: flight.id, created_at: flight.created_at ?? null })
+      continue
+    }
+
+    const canonicalTime = canonical.created_at ? new Date(canonical.created_at).getTime() : Number.POSITIVE_INFINITY
+    const candidateTime = flight.created_at ? new Date(flight.created_at).getTime() : Number.POSITIVE_INFINITY
+
+    if (candidateTime < canonicalTime) {
+      duplicateFlightIds.push(canonical.id)
+      canonicalFlightByKey.set(dedupeKey, { id: flight.id, created_at: flight.created_at ?? null })
+    } else {
+      duplicateFlightIds.push(flight.id)
+    }
+  }
+
+  if (duplicateFlightIds.length > 0) {
+    const { error: deleteDuplicatesError } = await admin
+      .from('flights')
+      .delete()
+      .in('id', duplicateFlightIds)
+    if (deleteDuplicatesError) throw deleteDuplicatesError
+  }
+
   return { inserted, updated, skipped, markedForReconfirm }
 }
 
