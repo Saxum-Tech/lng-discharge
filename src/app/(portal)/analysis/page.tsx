@@ -31,8 +31,18 @@ export default function AnalysisPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const start = new Date(Date.UTC(year, month - 1, 1)).toISOString()
-    const end = new Date(Date.UTC(year, month, 1)).toISOString()
+    const monthStartUtc = new Date(Date.UTC(year, month - 1, 1))
+    const monthEndUtc = new Date(Date.UTC(year, month, 1))
+    const todayUtc = new Date()
+    const todayStartUtc = new Date(
+      Date.UTC(todayUtc.getUTCFullYear(), todayUtc.getUTCMonth(), todayUtc.getUTCDate()),
+    )
+
+    const start =
+      year === todayStartUtc.getUTCFullYear() && month === todayStartUtc.getUTCMonth() + 1
+        ? todayStartUtc.toISOString()
+        : monthStartUtc.toISOString()
+    const end = monthEndUtc.toISOString()
 
     const [{ data: flightData }, { data: cruiseData }] = await Promise.all([
       supabase
@@ -71,7 +81,6 @@ export default function AnalysisPage() {
     )
   }
 
-  const longest = windows.find((w) => w.is_longest_of_month)
   const missingFlightDateSet = new Set(missingFlightDates)
 
   const isEarlyBerthingWindow = (startTime: string) => {
@@ -123,21 +132,7 @@ export default function AnalysisPage() {
         Ideal days allow berthing at 21:00–22:00 so vessel prep can complete before discharge starts at 23:00.
       </div>
 
-      {/* Highlight card */}
-      {longest && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-6 py-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-amber-600">
-            Longest discharge window this month
-          </p>
-          <p className="mt-1 text-3xl font-bold text-amber-800">
-            {formatDuration(longest.duration_hours)}
-          </p>
-          <p className="text-sm text-amber-600">
-            {format(new Date(longest.start_time), 'EEEE d MMM, HH:mm')} –{' '}
-            {format(new Date(longest.end_time), 'HH:mm')}
-          </p>
-        </div>
-      )}
+
 
       {/* Table */}
       {!loading && missingFlightDates.length > 0 && (
