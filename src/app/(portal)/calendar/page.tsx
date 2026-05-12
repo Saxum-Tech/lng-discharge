@@ -23,9 +23,9 @@ import type {
   PlannedDischarge,
   PlannedDischargeStatus,
 } from '@/lib/types'
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Wind } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { MaritimeWeatherWidget } from '@/components/portal/MaritimeWeatherWidget'
-import { degreesToArrow, fetchMaritimeForecast, getWeatherPresentation, type MaritimeDailyForecast } from '@/lib/open-meteo'
+import { degreesToArrow, fetchMaritimeForecast, fetchMaritimeHourlyForecast, type MaritimeDailyForecast, type MaritimeHourlyForecast } from '@/lib/open-meteo'
 import { formatAuditDateTime } from '@/lib/utils'
 import {
   addDays,
@@ -69,6 +69,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [missingFlightDates, setMissingFlightDates] = useState<string[]>([])
   const [weatherForecast, setWeatherForecast] = useState<MaritimeDailyForecast[]>([])
+  const [hourlyWeatherForecast, setHourlyWeatherForecast] = useState<MaritimeHourlyForecast[]>([])
   const [showDischargeModal, setShowDischargeModal] = useState(false)
   const [editingDischarge, setEditingDischarge] = useState<PlannedDischarge | null>(null)
 
@@ -88,6 +89,7 @@ export default function CalendarPage() {
       { data: opEventData },
       { data: dischargeData },
       weatherData,
+      hourlyWeatherData,
     ] = await Promise.all([
       supabase
         .from('flights')
@@ -115,6 +117,7 @@ export default function CalendarPage() {
         .gte('discharge_date', format(subDays(new Date(), 3), 'yyyy-MM-dd'))
         .order('discharge_date'),
       fetchMaritimeForecast(14),
+      fetchMaritimeHourlyForecast(14),
     ])
 
     const f = flightData ?? []
@@ -135,6 +138,7 @@ export default function CalendarPage() {
     const missing = getMissingFlightDates(f, year, month)
     setMissingFlightDates(missing)
     setWeatherForecast(weatherData)
+    setHourlyWeatherForecast(hourlyWeatherData)
     setSuitability(
       computeDailySuitability(
         events,
@@ -186,6 +190,16 @@ export default function CalendarPage() {
     return map
   }, [weatherForecast])
 
+
+  const hourlyWeatherByDate = useMemo(() => {
+    const map = new Map<string, MaritimeHourlyForecast[]>()
+    hourlyWeatherForecast.forEach((row) => {
+      const list = map.get(row.date) ?? []
+      list.push(row)
+      map.set(row.date, list)
+    })
+    return map
+  }, [hourlyWeatherForecast])
   const monthDays = getDaysInMonth(year, month)
   const monthGridDays = useMemo(() => {
     const monthStart = startOfMonth(currentDate)
@@ -285,7 +299,6 @@ export default function CalendarPage() {
               const isToday = isSameDay(new Date(`${day}T00:00:00Z`), startOfToday())
               const isInCurrentMonth = monthDays.includes(day)
               const weather = weatherByDate.get(day)
-              const weatherInfo = weather ? getWeatherPresentation(weather.weatherCode) : null
               return (
                 <Link key={day} href={`/day/${day}`} className={`group relative min-h-[112px] border-b border-r border-gray-100 p-1.5 transition-colors hover:bg-blue-50 ${!isInCurrentMonth ? 'bg-gray-50 text-gray-400' : daySuitability ? colorClasses[daySuitability.color] : ''}`}>
                   <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : isInCurrentMonth ? 'text-gray-700' : 'text-gray-400'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
@@ -300,17 +313,6 @@ export default function CalendarPage() {
                     </span>
                   )}
                   {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">{format(new Date(win.start_time), 'HH:mm')}→{format(new Date(win.end_time), 'HH:mm')} ({formatDuration(win.duration_hours)})</span>}
-                  {weatherInfo && weather && (
-                    <div className={`mt-1 rounded px-1 py-0.5 text-[10px] ${daySuitability?.is_weather_blocked ? 'bg-red-100 text-red-900' : weatherInfo.isAdverse ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-700'}`}>
-                      <div className="inline-flex items-center gap-1">{weatherInfo.icon} {weatherInfo.label}</div>
-                      <div className="inline-flex items-center gap-1">
-                        <Wind size={11} /> {degreesToArrow(weather.windDirectionDominant)} {weather.windSpeedMax?.toFixed(0) ?? '—'} kn
-                      </div>
-                      <div className="inline-flex items-center gap-1">
-                        <span aria-hidden>🌊</span> {degreesToArrow(weather.waveDirectionDominant)} {weather.waveHeightMax?.toFixed(1) ?? '—'} m
-                      </div>
-                    </div>
-                  )}
                   {eventCount > 0 && <span className="mt-1 block text-[10px] text-gray-500">{eventCount} evt</span>}
                 </Link>
               )
@@ -319,6 +321,46 @@ export default function CalendarPage() {
         </div>
       )}
 
+
+      {view === '2day' && !loading && (
+        <section className="mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+          <div className="min-w-[960px]">
+            <div className="grid grid-cols-[170px_repeat(24,minmax(34px,1fr))_repeat(24,minmax(34px,1fr))] border-b border-gray-200 bg-gray-50 text-[11px] text-gray-600">
+              <div className="sticky left-0 z-10 border-r border-gray-200 bg-gray-50 p-2 font-semibold">Metric</div>
+              {[0,1].map((dayIndex) => (
+                <div key={dayIndex} className="col-span-24 border-r border-gray-200 p-2 text-center font-semibold last:border-r-0">
+                  {format(new Date(`${visibleDays[dayIndex]}T00:00:00Z`), 'EEE dd MMM')}
+                </div>
+              ))}
+            </div>
+            {[
+              { label: 'Wind speed (kn)', key: 'windSpeed' as const, digits: 0 },
+              { label: 'Wind gusts (kn)', key: 'windGust' as const, digits: 0 },
+              { label: 'Wind dir (→)', key: 'windDirection' as const, arrow: true },
+              { label: 'Swell (m)', key: 'waveHeight' as const, digits: 1 },
+              { label: 'Swell period (s)', key: 'wavePeriod' as const, digits: 0 },
+              { label: 'Swell dir (→)', key: 'waveDirection' as const, arrow: true },
+            ].map((metric) => (
+              <div key={metric.label} className="grid grid-cols-[170px_repeat(24,minmax(34px,1fr))_repeat(24,minmax(34px,1fr))] border-b border-gray-100 text-[11px]">
+                <div className="sticky left-0 z-10 border-r border-gray-200 bg-white p-2 font-medium text-gray-700">{metric.label}</div>
+                {visibleDays.slice(0, 2).flatMap((day) => {
+                  const rows = (hourlyWeatherByDate.get(day) ?? []).slice().sort((a, b) => a.hour - b.hour)
+                  return Array.from({ length: 24 }).map((_, h) => {
+                    const row = rows.find((r) => r.hour === h)
+                    const raw = row ? row[metric.key] : null
+                    const value = metric.arrow ? degreesToArrow(raw as number | null) : raw == null ? '—' : (raw as number).toFixed(metric.digits ?? 0)
+                    return <div key={`${day}-${metric.label}-${h}`} className="border-r border-gray-100 px-1 py-1 text-center text-gray-700 last:border-r-0">{value}</div>
+                  })
+                })}
+              </div>
+            ))}
+            <div className="grid grid-cols-[170px_repeat(24,minmax(34px,1fr))_repeat(24,minmax(34px,1fr))] bg-gray-50 text-[10px] text-gray-500">
+              <div className="sticky left-0 z-10 border-r border-gray-200 bg-gray-50 p-2 font-medium">Hour (LT)</div>
+              {Array.from({ length: 2 }).flatMap((_, d) => Array.from({ length: 24 }).map((__, h) => <div key={`${d}-${h}`} className="border-r border-gray-100 px-1 py-1 text-center">{String(h).padStart(2, '0')}</div>))}
+            </div>
+          </div>
+        </section>
+      )}
       {view === '2day' && !loading && (
         <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
           <p className="font-medium">Overnight windows touching these days: {dayWindows.length}</p>
