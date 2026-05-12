@@ -58,6 +58,7 @@ export default function CalendarPage() {
   const { settings } = useTheme()
   const { profile, user } = useAuth()
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [view, setView] = useState<CalendarView>('2day')
   const [flights, setFlights] = useState<Flight[]>([])
   const [cruises, setCruises] = useState<CruiseSchedule[]>([])
@@ -183,6 +184,34 @@ export default function CalendarPage() {
     })
     return map
   }, [flights, cruises, ferries, operationalEvents])
+
+  const flightEventsByDate = useMemo(() => {
+    const map = new Map<string, number>()
+    flights.forEach((flight) => {
+      const arrivalDate = flight.scheduled_arrival.slice(0, 10)
+      map.set(arrivalDate, (map.get(arrivalDate) ?? 0) + 1)
+
+      if (flight.scheduled_departure) {
+        const departureDate = flight.scheduled_departure.slice(0, 10)
+        map.set(departureDate, (map.get(departureDate) ?? 0) + 1)
+      }
+    })
+    return map
+  }, [flights])
+
+  const cruiseEventsByDate = useMemo(() => {
+    const map = new Map<string, number>()
+    cruises.forEach((cruise) => {
+      const arrivalDate = cruise.arrival_date.slice(0, 10)
+      map.set(arrivalDate, (map.get(arrivalDate) ?? 0) + 1)
+
+      if (cruise.departure_date) {
+        const departureDate = cruise.departure_date.slice(0, 10)
+        map.set(departureDate, (map.get(departureDate) ?? 0) + 1)
+      }
+    })
+    return map
+  }, [cruises])
 
   const ferryEventsByDate = useMemo(() => {
     const map = new Map<string, number>()
@@ -324,7 +353,12 @@ export default function CalendarPage() {
               const isInCurrentMonth = monthDays.includes(day)
               const weather = weatherByDate.get(day)
               return (
-                <Link key={day} href={`/day/${day}`} className={`group relative min-h-[112px] border-b border-r border-gray-100 p-1.5 transition-colors hover:bg-blue-50 ${!isInCurrentMonth ? 'bg-gray-50 text-gray-400' : daySuitability ? colorClasses[daySuitability.color] : ''}`}>
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => setSelectedDate(day)}
+                  className={`group relative min-h-[112px] border-b border-r border-gray-100 p-1.5 text-left transition-colors hover:bg-blue-50 ${selectedDate === day ? 'ring-2 ring-inset ring-[var(--color-primary)]' : ''} ${!isInCurrentMonth ? 'bg-gray-50 text-gray-400' : daySuitability ? colorClasses[daySuitability.color] : ''}`}
+                >
                   <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : isInCurrentMonth ? 'text-gray-700' : 'text-gray-400'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
                   {missingFlightDates.includes(day) && (
                     <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1 py-0.5 text-[10px] font-semibold text-red-800" title="No flights found for this date">
@@ -352,11 +386,49 @@ export default function CalendarPage() {
                       )}
                     </div>
                   )}
-                </Link>
+                </button>
               )
             })}
           </div>
         </div>
+      )}
+
+      {!loading && (
+        <section className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-gray-900">
+              Event breakdown for {format(new Date(`${selectedDate}T00:00:00Z`), 'EEE, dd MMM yyyy')}
+            </h2>
+            <Link href={`/day/${selectedDate}`} className="text-sm font-medium text-[var(--color-primary)] hover:underline">
+              Open full day timeline
+            </Link>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="rounded-lg border border-gray-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+              <div className="font-semibold">✈ Flights</div>
+              <div className="text-lg font-bold">{flightEventsByDate.get(selectedDate) ?? 0}</div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-purple-50 px-3 py-2 text-sm text-purple-900">
+              <div className="font-semibold">🛳 Cruises</div>
+              <div className="text-lg font-bold">{cruiseEventsByDate.get(selectedDate) ?? 0}</div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-900">
+              <div className="font-semibold">⛴ Ferries</div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold">{ferryEventsByDate.get(selectedDate) ?? 0}</span>
+                {(ferryEventsByDate.get(selectedDate) ?? 0) > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
+                    <AlertTriangle size={12} /> Warning
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-900">
+                    No warning
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
 
