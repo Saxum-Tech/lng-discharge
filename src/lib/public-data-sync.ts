@@ -167,13 +167,21 @@ function parseLocalToIso(datePart: string, hourPart = '00', minutePart = '00'): 
   return localDateTimeInZoneToUtcIso(year, monthIndex, day, hour, minute, SOURCE_TIMEZONE)
 }
 
-function normalizeDate(value: string, contextDate?: string): string | null {
+function normalizeDate(value: string, contextDate?: string, preserveLocalClock = false): string | null {
   const trimmed = value.trim()
   if (!trimmed) return null
   if (/^\d{1,6}$/.test(trimmed)) return null
 
   const direct = new Date(trimmed)
-  if (!Number.isNaN(direct.getTime())) return direct.toISOString()
+  if (!Number.isNaN(direct.getTime())) {
+    if (preserveLocalClock) {
+      const isoLike = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::\d{2})?$/)
+      if (isoLike) {
+        return `${isoLike[1]}-${isoLike[2]}-${isoLike[3]}T${isoLike[4].padStart(2, '0')}:${isoLike[5]}:00.000Z`
+      }
+    }
+    return direct.toISOString()
+  }
 
   const dayFirst = trimmed.match(
     /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?$/,
@@ -184,7 +192,9 @@ function normalizeDate(value: string, contextDate?: string): string | null {
     const year = normalizeYear(dayFirst[3])
     const hour = (dayFirst[4] ?? '00').padStart(2, '0')
     const minute = dayFirst[5] ?? '00'
-    const parsed = parseLocalToIso(`${year}-${month}-${day}`, hour, minute)
+    const parsed = preserveLocalClock
+      ? `${year}-${month}-${day}T${hour}:${minute}:00.000Z`
+      : parseLocalToIso(`${year}-${month}-${day}`, hour, minute)
     if (parsed) return parsed
   }
 
@@ -198,7 +208,9 @@ function normalizeDate(value: string, contextDate?: string): string | null {
       const year = normalizeYear(monthName[3])
       const hour = (monthName[4] ?? '00').padStart(2, '0')
       const minute = monthName[5] ?? '00'
-      const parsed = parseLocalToIso(`${year}-${month}-${day}`, hour, minute)
+      const parsed = preserveLocalClock
+      ? `${year}-${month}-${day}T${hour}:${minute}:00.000Z`
+      : parseLocalToIso(`${year}-${month}-${day}`, hour, minute)
       if (parsed) return parsed
     }
   }
@@ -207,7 +219,9 @@ function normalizeDate(value: string, contextDate?: string): string | null {
   if (timeOnly && contextDate) {
     const hour = timeOnly[1].padStart(2, '0')
     const minute = timeOnly[2]
-    const parsed = parseLocalToIso(contextDate, hour, minute)
+    const parsed = preserveLocalClock
+      ? `${contextDate}T${hour}:${minute}:00.000Z`
+      : parseLocalToIso(contextDate, hour, minute)
     if (parsed) return parsed
   }
 
@@ -280,12 +294,12 @@ function findTrailingPassengerCount(row: string[]): number | null {
   return null
 }
 
-function findDateInRow(row: string[], contextDate?: string, exclude?: string): string | null {
+function findDateInRow(row: string[], contextDate?: string, exclude?: string, preserveLocalClock = false): string | null {
   for (const cell of row) {
     if (exclude && cell === exclude) continue
     if (!looksLikeDateText(cell)) continue
 
-    const normalized = normalizeDate(cell, contextDate)
+    const normalized = normalizeDate(cell, contextDate, preserveLocalClock)
     if (normalized) return normalized
   }
 
@@ -319,12 +333,12 @@ function parseLegacyCruisesFromRows(rows: string[][]): ParsedCruise[] {
       continue
     }
 
-    const firstIsDate = normalizeDate(row[0])
-    const secondIsDate = normalizeDate(row[1])
+    const firstIsDate = normalizeDate(row[0], undefined, true)
+    const secondIsDate = normalizeDate(row[1], undefined, true)
     const vessel = firstIsDate && !secondIsDate ? row[1] : row[0]
     const arrival = firstIsDate ?? secondIsDate
     if (!vessel || !arrival) continue
-    const departure = row[2] ? normalizeDate(row[2]) : null
+    const departure = row[2] ? normalizeDate(row[2], undefined, true) : null
     const vesselType = extractVesselType(row, vessel)
     const passengerCount = findTrailingPassengerCount(row)
 
@@ -369,13 +383,13 @@ function parseCruisesFromHtml(html: string): ParsedCruise[] {
 
       const vessel = row[vesselIndex] ?? row[0]
       const arrivalCell = arrivalIndex >= 0 ? row[arrivalIndex] : undefined
-      const arrival = arrivalCell ? normalizeDate(arrivalCell) : findDateInRow(row)
+      const arrival = arrivalCell ? normalizeDate(arrivalCell, undefined, true) : findDateInRow(row, undefined, undefined, true)
       if (!vessel || !arrival) continue
 
       const departureCell = departureIndex >= 0 ? row[departureIndex] : undefined
       const departure = departureCell
-        ? normalizeDate(departureCell)
-        : findDateInRow(row, undefined, arrivalCell)
+        ? normalizeDate(departureCell, undefined, true)
+        : findDateInRow(row, undefined, arrivalCell, true)
       const passengerCount =
         passengerIndex !== null && passengerIndex >= 0
           ? parsePassengerCountCell(row[passengerIndex] ?? '')
