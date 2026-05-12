@@ -74,6 +74,12 @@ export default function AnalysisPage() {
   const longest = windows.find((w) => w.is_longest_of_month)
   const missingFlightDateSet = new Set(missingFlightDates)
 
+  const isEarlyBerthingWindow = (startTime: string) => {
+    const start = new Date(startTime)
+    const hour = start.getHours()
+    return hour >= 21 && hour <= 22
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
@@ -212,11 +218,18 @@ export default function AnalysisPage() {
                       {formatDuration(w.duration_hours)}
                     </td>
                     <td className="py-3">
-                      {w.is_longest_of_month && (
-                        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-medium text-amber-800">
-                          Longest
-                        </span>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {w.is_longest_of_month && (
+                          <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-medium text-amber-800">
+                            Longest
+                          </span>
+                        )}
+                        {isEarlyBerthingWindow(w.start_time) && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                            Early Berthing
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
