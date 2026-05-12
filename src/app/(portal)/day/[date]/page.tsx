@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import {
   buildDayEvents,
@@ -213,7 +214,9 @@ export default function DayDetailPage() {
                             <ul className="space-y-1">
                               {slotEvents.map((event) => (
                                 <li key={event.id} className="rounded bg-blue-50 px-1.5 py-1 text-blue-900">
-                                  {formatTimeInZone(event.time)} {event.title}
+                                  <Link href={`/my-entries?type=${event.type}&id=${event.id}`} className="underline-offset-2 hover:underline">
+                                    {formatTimeInZone(event.time)} {event.title}
+                                  </Link>
                                 </li>
                               ))}
                             </ul>
@@ -235,7 +238,11 @@ export default function DayDetailPage() {
                       {event.type === 'flight' ? (event.flight_direction === 'departure' ? <PlaneTakeoff size={12} /> : <PlaneLanding size={12} />) : event.type === 'ferry' ? <FerrisWheel size={12} /> : <Ship size={12} />}
                     </span>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{event.title}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        <Link href={`/my-entries?type=${event.type}&id=${event.id}`} className="underline-offset-2 hover:underline">
+                          {event.title}
+                        </Link>
+                      </p>
                       <p className="text-xs text-gray-400">{formatTimeInZone(event.time)}</p>
                       <p className="text-xs text-gray-500">Source: {event.data_source ?? 'unknown'}</p>
                       {event.type === 'flight' && event.delay_minutes && event.delay_minutes > 0 && (

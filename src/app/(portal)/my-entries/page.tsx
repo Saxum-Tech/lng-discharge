@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import type {
@@ -47,6 +48,7 @@ function displayActorName(userId: string | null | undefined, labelMap: UserLabel
 
 export default function MyEntriesPage() {
   const { profile, user } = useAuth()
+  const searchParams = useSearchParams()
   const [flights, setFlights] = useState<Flight[]>([])
   const [cruises, setCruises] = useState<CruiseSchedule[]>([])
   const [ferries, setFerries] = useState<FerrySchedule[]>([])
@@ -56,6 +58,7 @@ export default function MyEntriesPage() {
   const [editItem, setEditItem] = useState<Flight | CruiseSchedule | FerrySchedule | OperationalEvent | null>(null)
   const [entryType, setEntryType] = useState<EntryType>('flight')
   const [userLabels, setUserLabels] = useState<UserLabelMap>({})
+  const queryHandledRef = useRef(false)
 
   const companyId = profile?.company_id
 
@@ -123,6 +126,36 @@ export default function MyEntriesPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  useEffect(() => {
+    if (loading || queryHandledRef.current) return
+    const queryType = searchParams.get('type')
+    const id = searchParams.get('id')
+    if (!queryType || !id) return
+
+    const typeMap: Record<string, EntryType> = {
+      flight: 'flight',
+      cruise: 'cruise',
+      ferry: 'ferry',
+      operational: 'operational',
+    }
+    const normalizedType = typeMap[queryType]
+    if (!normalizedType) return
+
+    const item =
+      normalizedType === 'flight'
+        ? flights.find((f) => f.id === id)
+        : normalizedType === 'cruise'
+          ? cruises.find((c) => c.id === id)
+          : normalizedType === 'ferry'
+            ? ferries.find((f) => f.id === id)
+            : operationalEvents.find((e) => e.id === id)
+
+    if (!item) return
+
+    openEdit(item, normalizedType)
+    queryHandledRef.current = true
+  }, [searchParams, loading, flights, cruises, ferries, operationalEvents])
 
   async function deleteEntry(type: EntryType, id: string) {
     if (!confirm('Delete this entry?')) return
