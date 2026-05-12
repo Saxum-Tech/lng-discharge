@@ -142,20 +142,10 @@ export default function AuditLogPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <CardTitle>Recent activity</CardTitle>
-            <button
-              onClick={handleExport}
-              disabled={logs.length === 0}
-              className="inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Download size={15} />
-              Export CSV
-            </button>
-          </div>
+          <CardTitle>Recent activity</CardTitle>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
-            <label className="relative lg:col-span-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="relative min-w-[240px] flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
@@ -169,7 +159,7 @@ export default function AuditLogPage() {
             <select
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value as ActionFilter)}
-              className="rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="min-w-[180px] rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             >
               <option value="all">All actions</option>
               <option value="INSERT">Insert</option>
@@ -180,7 +170,7 @@ export default function AuditLogPage() {
             <select
               value={tableFilter}
               onChange={(e) => setTableFilter(e.target.value)}
-              className="rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="min-w-[180px] rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             >
               <option value="all">All tables</option>
               {tableOptions.map((tableName) => (
@@ -190,7 +180,7 @@ export default function AuditLogPage() {
               ))}
             </select>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid min-w-[220px] grid-cols-2 gap-2">
               <input
                 type="date"
                 value={startDate}
@@ -204,6 +194,15 @@ export default function AuditLogPage() {
                 className="rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
               />
             </div>
+
+            <button
+              onClick={handleExport}
+              disabled={logs.length === 0}
+              className="inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Download size={15} />
+              Export CSV
+            </button>
           </div>
         </CardHeader>
 
