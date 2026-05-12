@@ -14,7 +14,7 @@ import type {
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, addMonths, endOfDay, endOfMonth, startOfDay, startOfMonth } from 'date-fns'
 import {
   Plus,
   Trash2,
@@ -31,7 +31,7 @@ import {
 import { formatAuditDateTime } from '@/lib/utils'
 
 type EntryType = 'flight' | 'cruise' | 'ferry' | 'operational'
-type DateFilter = 'all' | 'day' | 'week' | 'month'
+type DateFilter = 'all' | 'today' | 'this_month' | 'next_month'
 
 type UserLabelMap = Record<string, string>
 
@@ -375,15 +375,19 @@ function EntryList({
     return rows.filter((row) => {
       const eventDate = parseISO(row.filterDate)
       let matchesDate = true
-      if (dateFilter === 'day') {
-        const threshold = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-        matchesDate = eventDate >= threshold
-      } else if (dateFilter === 'week') {
-        const threshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        matchesDate = eventDate >= threshold
-      } else if (dateFilter === 'month') {
-        const threshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        matchesDate = eventDate >= threshold
+      if (dateFilter === 'today') {
+        const start = startOfDay(now)
+        const end = endOfDay(now)
+        matchesDate = eventDate >= start && eventDate <= end
+      } else if (dateFilter === 'this_month') {
+        const start = startOfMonth(now)
+        const end = endOfMonth(now)
+        matchesDate = eventDate >= start && eventDate <= end
+      } else if (dateFilter === 'next_month') {
+        const nextMonth = addMonths(now, 1)
+        const start = startOfMonth(nextMonth)
+        const end = endOfMonth(nextMonth)
+        matchesDate = eventDate >= start && eventDate <= end
       }
 
       const matchesQuery =
@@ -422,14 +426,15 @@ function EntryList({
             className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
           >
             <option value="all">All</option>
-            <option value="day">Last day</option>
-            <option value="week">Last week</option>
-            <option value="month">Last month</option>
+            <option value="today">Today</option>
+            <option value="this_month">This month</option>
+            <option value="next_month">Next month</option>
           </select>
         </div>
         <div className="min-w-[220px] flex-1">
+          <label className="sr-only" htmlFor={`${title}-search`}>Search</label>
           <Input
-            label="Search"
+            id={`${title}-search`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search heading, schedule, user..."

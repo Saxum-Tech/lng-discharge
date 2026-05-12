@@ -23,7 +23,7 @@ import type {
   PlannedDischarge,
   PlannedDischargeStatus,
 } from '@/lib/types'
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Plane, Ship, ShipWheel } from 'lucide-react'
 import { MaritimeWeatherWidget } from '@/components/portal/MaritimeWeatherWidget'
 import { degreesToArrow, degreesToCardinal, fetchMaritimeForecast, fetchMaritimeHourlyForecast, type MaritimeDailyForecast, type MaritimeHourlyForecast } from '@/lib/open-meteo'
 import { formatAuditDateTime } from '@/lib/utils'
@@ -433,6 +433,11 @@ export default function CalendarPage() {
                   )}
                   {dischargeCount > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
+                      {ferryCount > 0 && (
+                        <span className="inline-flex items-center rounded bg-cyan-100 px-1 py-0.5 text-[10px] font-medium text-cyan-900">
+                          <ShipWheel size={10} className="mr-1" /> {ferryCount}
+                        </span>
+                      )}
                       {dischargeCount > 0 && (
                         <span className="inline-flex items-center rounded bg-indigo-100 px-1 py-0.5 text-[10px] font-medium text-indigo-900">
                           LNG {dischargeCount}
@@ -459,21 +464,21 @@ export default function CalendarPage() {
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
-              <div className="font-semibold">✈ Flights</div>
+              <div className="flex items-center gap-1 font-semibold"><Plane size={14} /> Flights</div>
               <div className="text-lg font-bold">{flightEventsByDate.get(selectedDate) ?? 0}</div>
               <div className="mt-1 text-xs">
                 First: {eventTimingBreakdown.flights.first ? `${eventTimingBreakdown.flights.first.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.flights.first.time), 'HH:mm')}` : '—'} · Last: {eventTimingBreakdown.flights.last ? `${eventTimingBreakdown.flights.last.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.flights.last.time), 'HH:mm')}` : '—'}
               </div>
             </div>
             <div className="rounded-lg border border-gray-200 bg-purple-50 px-3 py-2 text-sm text-purple-900">
-              <div className="font-semibold">🛳 Cruises</div>
+              <div className="flex items-center gap-1 font-semibold"><Ship size={14} /> Cruises</div>
               <div className="text-lg font-bold">{cruiseEventsByDate.get(selectedDate) ?? 0}</div>
               <div className="mt-1 text-xs">
                 First: {eventTimingBreakdown.cruises.first ? `${eventTimingBreakdown.cruises.first.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.cruises.first.time), 'HH:mm')}` : '—'} · Last: {eventTimingBreakdown.cruises.last ? `${eventTimingBreakdown.cruises.last.type === 'in' ? 'In' : 'Out'} ${format(parseISO(eventTimingBreakdown.cruises.last.time), 'HH:mm')}` : '—'}
               </div>
             </div>
             <div className="rounded-lg border border-gray-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-900">
-              <div className="font-semibold">⛴ Ferries</div>
+              <div className="flex items-center gap-1 font-semibold"><ShipWheel size={14} /> Ferries</div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold">{ferryEventsByDate.get(selectedDate) ?? 0}</span>
                 {(ferryEventsByDate.get(selectedDate) ?? 0) > 0 ? (
