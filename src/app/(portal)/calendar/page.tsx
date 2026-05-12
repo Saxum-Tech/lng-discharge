@@ -400,8 +400,8 @@ export default function CalendarPage() {
 
   return (
     <div className="pb-8">
-      <div className="w-full border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6 lg:px-8">
-        <MaritimeWeatherWidget />
+      <div className="w-full border-b border-gray-200 bg-white px-4 py-2 sm:px-6 lg:px-8">
+        <MaritimeWeatherWidget compact />
       </div>
 
       <div className="mt-6 w-full px-4 sm:px-6 lg:px-8">
@@ -501,7 +501,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="space-y-4">
       {!loading && (
         <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm xl:hidden">
@@ -619,6 +619,7 @@ export default function CalendarPage() {
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">
+          <div className="grid gap-4 2xl:grid-cols-2">
           {!loading && (
             <section className="hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm xl:block">
               <div className="mb-3 flex items-center justify-between gap-3">
@@ -725,6 +726,7 @@ export default function CalendarPage() {
           </div>
         )}
       </section>
+          </div>
         </aside>
       </div>
 

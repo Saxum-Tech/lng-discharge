@@ -16,11 +16,12 @@ import { DirectionArrow } from '@/components/DirectionArrow'
 
 type MaritimeWeatherWidgetProps = {
   selectedDate?: string
+  compact?: boolean
 }
 
 const formatNumber = (value: number | null, digits = 1) => (value == null ? '—' : value.toFixed(digits))
 
-export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetProps) {
+export function MaritimeWeatherWidget({ selectedDate, compact = false }: MaritimeWeatherWidgetProps) {
   const [forecast, setForecast] = useState<MaritimeDailyForecast[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -90,7 +91,7 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
   const adverseDays = forecast.filter((day) => getWeatherPresentation(day.weatherCode).isAdverse || getWeatherSafetyStatus(day).isUnsafe)
 
   return (
-    <section className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+    <section className={compact ? 'mx-auto w-full max-w-6xl px-1 py-2' : 'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm'}>
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-gray-900">Maritime Weather</h2>
         <p className="text-xs text-amber-700">Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m · wind ≤ {BERTHING_WIND_LIMIT_MS} m/s.</p>
@@ -123,7 +124,7 @@ export function MaritimeWeatherWidget({ selectedDate }: MaritimeWeatherWidgetPro
             </div>
           )}
 
-          <div className="flex w-full gap-2 overflow-x-auto pb-1">
+          <div className={`flex w-full gap-2 overflow-x-auto pb-1 ${compact ? 'justify-center whitespace-nowrap' : ''}`}>
             {shortForecast.map((day) => {
               const weather = getWeatherPresentation(day.weatherCode)
               const safety = getWeatherSafetyStatus(day)
