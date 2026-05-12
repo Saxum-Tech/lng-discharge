@@ -51,6 +51,18 @@ function startOfUtcDayIso(date = new Date()): string {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).toISOString()
 }
 
+function getUtcSyncWindow(date = new Date()): { windowStartHour: number; windowLabel: string } {
+  const hour = date.getUTCHours()
+  if (hour >= 18) return { windowStartHour: 18, windowLabel: '18:00Z' }
+  return { windowStartHour: 10, windowLabel: '10:00Z' }
+}
+
+function startOfUtcHourWindowIso(windowStartHour: number, date = new Date()): string {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), windowStartHour, 0, 0),
+  ).toISOString()
+}
+
 
 function extractErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message
@@ -145,17 +157,18 @@ export async function POST(request: Request) {
     }
 
     if (cronAuthorized) {
-      const { count: completedTodayCount, error: completedTodayError } = await admin
+      const syncWindow = getUtcSyncWindow()
+      const { count: completedWindowCount, error: completedTodayError } = await admin
         .from('audit_logs')
         .select('id', { count: 'exact', head: true })
         .eq('action', 'public_data_sync_completed')
         .eq('table_name', 'public_data_sync')
-        .gte('created_at', startOfUtcDayIso())
+        .gte('created_at', startOfUtcHourWindowIso(syncWindow.windowStartHour))
 
       if (completedTodayError) throw completedTodayError
 
-      if ((completedTodayCount ?? 0) > 0) {
-        const reason = 'Auto sync already completed today (UTC); skipping duplicate daily run.'
+      if ((completedWindowCount ?? 0) > 0) {
+        const reason = `Auto sync already completed in the ${syncWindow.windowLabel} UTC window; skipping duplicate run.`
         await writeAuditLog('public_data_sync_skipped', {
           trigger: 'cron',
           reason,
