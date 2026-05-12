@@ -59,7 +59,7 @@ export default function CalendarPage() {
   const { profile, user } = useAuth()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [view, setView] = useState<CalendarView>('2day')
+  const [view, setView] = useState<CalendarView>('month')
   const [flights, setFlights] = useState<Flight[]>([])
   const [cruises, setCruises] = useState<CruiseSchedule[]>([])
   const [ferries, setFerries] = useState<FerrySchedule[]>([])
@@ -367,7 +367,7 @@ export default function CalendarPage() {
                   )}
                   {daySuitability && (
                     <span className={`mt-1 block rounded px-1 py-0.5 text-[11px] font-semibold ${colorBadgeClasses[daySuitability.color]}`}>
-                      {daySuitability.recommended_berthing_time ? `BT ${format(parseISO(daySuitability.recommended_berthing_time), 'HH:mm')}` : 'No BT'}
+                      {daySuitability.recommended_berthing_time ? `EB Available ${format(parseISO(daySuitability.recommended_berthing_time), 'HH:mm')}` : 'No EB'}
                     </span>
                   )}
                   {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">{format(new Date(win.start_time), 'HH:mm')}→{format(new Date(win.end_time), 'HH:mm')} ({formatDuration(win.duration_hours)})</span>}
