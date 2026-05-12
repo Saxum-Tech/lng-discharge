@@ -579,7 +579,8 @@ async function fetchJson(url: string): Promise<unknown> {
   return response.json()
 }
 
-const AVIATIONSTACK_FORWARD_DAYS = 30
+const AVIATIONSTACK_FORWARD_DAYS = 7
+const GIBRALTAR_TIMETABLE_MONTHS_AHEAD = 3
 
 function withinNextDays(timestamp: string, days: number): boolean {
   const time = new Date(timestamp).getTime()
@@ -632,6 +633,31 @@ function buildAviationStackWindowUrls(apiKey: string, airportIata = DEFAULT_DEST
     urls.push(
       `https://api.aviationstack.com/v1/flights?access_key=${encodeURIComponent(apiKey)}&${key}=${airportIata}`,
     )
+  }
+
+  return urls
+}
+
+function addMonthsUtc(date: Date, months: number): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1))
+}
+
+function buildGibraltarTimetableUrls(monthsAhead = GIBRALTAR_TIMETABLE_MONTHS_AHEAD): string[] {
+  const baseUrl =
+    process.env.GIBRALTAR_AIRPORT_TIMETABLE_URL ||
+    'https://www.gibraltarairport.gi/airlines-and-destinations/timetable'
+  const now = new Date()
+  const monthCount = Math.max(1, monthsAhead)
+  const urls: string[] = []
+
+  for (let i = 0; i < monthCount; i += 1) {
+    const monthDate = addMonthsUtc(now, i)
+    const month = String(monthDate.getUTCMonth() + 1).padStart(2, '0')
+    const year = String(monthDate.getUTCFullYear())
+    const url = new URL(baseUrl)
+    url.searchParams.set('timetable_airport', '')
+    url.searchParams.set('timetable_date', `${month}/${year}`)
+    urls.push(url.toString())
   }
 
   return urls
@@ -917,10 +943,23 @@ export async function runPublicDataSync(
   const airportUrl =
     process.env.GIBRALTAR_AIRPORT_FLIGHTS_URL ||
     'https://www.gibraltarairport.gi/airlines-and-destinations/live-flight-information'
+  const airportTimetableUrls = buildGibraltarTimetableUrls()
 
-  console.info('[public-data-sync] Fetching upstream schedules', { requestId, cruiseUrl: redactUrl(cruiseUrl), airportUrl: redactUrl(airportUrl) })
-  const [cruiseHtml, airportHtml] = await Promise.all([fetchText(cruiseUrl), fetchText(airportUrl)])
-  const websiteFlights = parseFlightsFromHtml(airportHtml)
+  console.info('[public-data-sync] Fetching upstream schedules', {
+    requestId,
+    cruiseUrl: redactUrl(cruiseUrl),
+    airportUrl: redactUrl(airportUrl),
+    airportTimetableUrls: airportTimetableUrls.map((url) => redactUrl(url)),
+  })
+  const [cruiseHtml, airportHtml, ...airportTimetableHtml] = await Promise.all([
+    fetchText(cruiseUrl),
+    fetchText(airportUrl),
+    ...airportTimetableUrls.map((url) => fetchText(url)),
+  ])
+  const websiteFlights = [
+    ...parseFlightsFromHtml(airportHtml),
+    ...airportTimetableHtml.flatMap((html) => parseFlightsFromHtml(html)),
+  ]
   let flights = [...websiteFlights]
   const cruises = parseCruisesFromHtml(cruiseHtml)
 
