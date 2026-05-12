@@ -478,7 +478,7 @@ export default function CalendarPage() {
                 >
                   <span className={`text-sm font-medium ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary)] text-white' : isInCurrentMonth ? 'text-gray-700' : 'text-gray-400'}`}>{format(new Date(`${day}T00:00:00Z`), 'd')}</span>
                   {dayBoundary ? (
-                    <div className="mt-1 space-y-0.5">
+                    <div className={`mt-1 grid gap-0.5 ${daySuitability ? 'grid-cols-3' : 'grid-cols-2'}`}>
                       <div className="flex items-center gap-1 rounded bg-emerald-100 px-1 py-0.5">
                         <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-600">1st</span>
                         <span className="text-[11px] font-bold text-emerald-900">{format(new Date(dayBoundary.earliest), 'HH:mm')}</span>
@@ -487,6 +487,11 @@ export default function CalendarPage() {
                         <span className="text-[9px] font-bold uppercase tracking-wide text-rose-600">Last</span>
                         <span className="text-[11px] font-bold text-rose-900">{format(new Date(dayBoundary.latest), 'HH:mm')}</span>
                       </div>
+                      {daySuitability && (
+                        <span className={`block rounded px-1 py-0.5 text-[11px] font-semibold ${colorBadgeClasses[daySuitability.color]}`}>
+                          {daySuitability.recommended_berthing_time ? `Berthing as from ${format(parseISO(daySuitability.recommended_berthing_time), 'HH:mm')}` : 'No EB'}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <div className="mt-1 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-400">No events</div>
@@ -494,11 +499,6 @@ export default function CalendarPage() {
                   {missingFlightDates.includes(day) && (
                     <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-red-100 px-1 py-0.5 text-[10px] font-semibold text-red-800" title="No flights found for this date">
                       <AlertTriangle size={10} /> !
-                    </span>
-                  )}
-                  {daySuitability && (
-                    <span className={`mt-1 block rounded px-1 py-0.5 text-[11px] font-semibold ${colorBadgeClasses[daySuitability.color]}`}>
-                      {daySuitability.recommended_berthing_time ? `Berthing as from ${format(parseISO(daySuitability.recommended_berthing_time), 'HH:mm')}` : 'No EB'}
                     </span>
                   )}
                   {win && <span className="mt-1 block rounded bg-[color:oklch(from_var(--color-accent)_l_c_h_/_0.2)] px-1 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">{format(new Date(win.start_time), 'HH:mm')}→{format(new Date(win.end_time), 'HH:mm')} ({formatDuration(win.duration_hours)})</span>}
@@ -659,7 +659,7 @@ export default function CalendarPage() {
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">
-          <div className="grid gap-4 2xl:grid-cols-2">
+          <div className="grid gap-4">
           {!loading && (
             <section className="hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm xl:block">
               <div className="mb-3 flex items-center justify-between gap-3">
