@@ -23,6 +23,13 @@ npm run dev
 
 The development server defaults to <http://localhost:3000>.
 
+## Node.js version parity (local, CI, production)
+
+- Required Node.js version: **20.19.x** (exact tested major/minor line).
+- Local development: use `.nvmrc` (`nvm use`) to align your shell.
+- CI: pin the same `20.19.x` line in your Node setup step.
+- Vercel: set Project Settings → Node.js Version to **20.x** so build/runtime stay aligned with `package.json` engines.
+
 ## Supabase setup
 
 1. Create a Supabase project at <https://supabase.com>.
