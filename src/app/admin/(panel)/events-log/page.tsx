@@ -236,7 +236,7 @@ export default function EventsLogPage() {
                   <div key={`discharge-${discharge.id}`} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
                     <div className="flex-1">
                       <p className="flex items-center gap-1 text-sm font-medium"><Fuel size={14} /> Planned discharge — {discharge.vessel_name}</p>
-                      <p className="text-xs text-gray-500">planned_discharge · {format(parseISO(discharge.alongside_target_at), 'HH:mm')} · {discharge.status}</p>
+                      <p className="text-xs text-gray-500">planned_discharge · {formatIsoTime(discharge.alongside_target_at)} · {discharge.status}</p>
                     </div>
                   </div>
                 ))}
