@@ -92,11 +92,6 @@ export function MaritimeWeatherWidget({ selectedDate, compact = false }: Maritim
 
   return (
     <section className={compact ? 'mx-auto w-full max-w-6xl px-1 py-2' : 'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm'}>
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold text-gray-900">Maritime Weather</h2>
-        <p className="text-xs text-amber-700">Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m · wind ≤ {BERTHING_WIND_LIMIT_MS} m/s.</p>
-      </div>
-
       {loading ? (
         <p className="text-sm text-gray-500">Loading weather forecast…</p>
       ) : error ? (
@@ -117,12 +112,6 @@ export function MaritimeWeatherWidget({ selectedDate, compact = false }: Maritim
           )}
 
           {selectedDayMessage && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{selectedDayMessage}</div>}
-
-          {adverseDays.length > 0 && (
-            <div className="mb-2 text-xs text-amber-900">
-              <span className="font-semibold">Adverse weather watch:</span> {adverseDays.map((day) => format(parseISO(day.date), 'dd MMM')).join(', ')}
-            </div>
-          )}
 
           <div className={`flex w-full gap-2 overflow-x-auto pb-1 ${compact ? 'justify-center whitespace-nowrap' : ''}`}>
             {shortForecast.map((day) => {
@@ -146,6 +135,14 @@ export function MaritimeWeatherWidget({ selectedDate, compact = false }: Maritim
                 </div>
               )
             })}
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <p className="text-amber-700">Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m · wind ≤ {BERTHING_WIND_LIMIT_MS} m/s.</p>
+            <p className="text-amber-900">
+              <span className="font-semibold">Adverse weather watch:</span>{' '}
+              {adverseDays.length > 0 ? adverseDays.map((day) => format(parseISO(day.date), 'dd MMM')).join(', ') : 'None'}
+            </p>
           </div>
         </>
       )}
