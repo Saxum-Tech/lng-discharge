@@ -139,10 +139,11 @@ export function MaritimeWeatherWidget({ selectedDate, compact = false }: Maritim
 
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
             <p className="text-amber-700">Safety limits: wave ≤ {BERTHING_WAVE_LIMIT_M.toFixed(1)} m · wind ≤ {BERTHING_WIND_LIMIT_MS} m/s.</p>
-            <p className="text-amber-900">
-              <span className="font-semibold">Adverse weather watch:</span>{' '}
-              {adverseDays.length > 0 ? adverseDays.map((day) => format(parseISO(day.date), 'dd MMM')).join(', ') : 'None'}
-            </p>
+            {adverseDays.length > 0 && (
+              <p className="text-amber-900">
+                <span className="font-semibold">Adverse weather watch:</span> {adverseDays.map((day) => format(parseISO(day.date), 'dd MMM')).join(', ')}
+              </p>
+            )}
           </div>
         </>
       )}
