@@ -438,6 +438,8 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="space-y-4">
       {loading ? (
         <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[var(--color-primary)]" /></div>
       ) : (
@@ -530,8 +532,6 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="space-y-4">
       {!loading && (
         <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm xl:hidden">
           <div className="mb-3 flex items-center justify-between gap-3">
